@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Dec 19 16:19:18 2019
+Created on Sun Aug 23 12:11:15 2020
 
 Modified from the cornstover biorefinery constructed in Cortes-Peña et al., 2020,
-with modification of fermentation system for organic acids instead of the original ethanol
+with modification of fermentation system for 2,3-Butanediol instead of the original ethanol
 
 [1] Cortes-Peña et al., BioSTEAM: A Fast and Flexible Platform for the Design, 
     Simulation, and Techno-Economic Analysis of Biorefineries under Uncertainty. 
@@ -13,7 +13,7 @@ with modification of fermentation system for organic acids instead of the origin
 
 All units are explicitly defined here for transparency and easy reference
 
-@author: yalinli_cabbi
+@author: sarangbhagwat
 """
 
 
