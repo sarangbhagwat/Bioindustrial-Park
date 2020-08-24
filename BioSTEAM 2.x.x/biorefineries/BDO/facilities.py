@@ -426,7 +426,7 @@ class BT(Facility):
             
             # Take the opposite for cooling duty (i.e., cooling duty should be negative)
             # this is to condense the unused steam
-            cooling_need = self.cooling_need = -(BT_heat_surplus-electricity_generated)
+            cooling_need = self.cooling_need = -(BT_heat_surplus-electricity_generated*3600)
             # hu_cooling = HeatUtility()
             hu_cooling(duty=cooling_need, T_in=lps.T)
             natural_gas.empty()
