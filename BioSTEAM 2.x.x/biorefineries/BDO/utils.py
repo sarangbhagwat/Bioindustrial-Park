@@ -159,7 +159,7 @@ dry_composition = dict(
 
 moisture_content = 0.2
 dry_feedstock_flow = 2205 * _kg_per_ton / 24     
-
+# dry_feedstock_flow = 1188.9732935254162 * _kg_per_ton / 24     
 # dry_feedstock_flow = 500 * _kg_per_ton / 24     
 baseline_feedflow = get_feedstock_flow(dry_composition, moisture_content, 
                                        dry_feedstock_flow)

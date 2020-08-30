@@ -18,16 +18,19 @@ import biosteam as bst
 from biosteam.utils import colors
 from BDO.system import BDO_sys, BDO_tea, R302
 from BDO.system import spec
-from BDO.system import BDO as product
+from BDO.system import MEK as product
 from matplotlib import pyplot as plt
 from  matplotlib.colors import LinearSegmentedColormap
 import pandas as pd
-from biosteam.plots import plot_contour_2d, MetricBar, plot_scatter_points#, CABBI_green_colormap
+from biosteam.plots import  MetricBar, plot_scatter_points, plot_contour_2d #, CABBI_green_colormap
 from math import floor, ceil
 from datetime import datetime
-
+from math import log
+from biosteam.utils import colors
+from biosteam.utils import style_axis, style_plot_limits, fill_plot, set_axes_labels
+import matplotlib.colors as mcolors
 ig = np.seterr(invalid='ignore')
-
+bst.speed_up()
 # Colors
 marketrange_shadecolor = (*colors.neutral.RGBn, 0.15)
 
@@ -78,16 +81,74 @@ def CABBI_blue_colormap(N_levels=25):
     return LinearSegmentedColormap.from_list('CABBI', CABBI_colors, N_levels)
 
 
-
+# def plot_contour_2d(X_grid, Y_grid, Z_1d, data, 
+#                     xlabel, ylabel, xticks, yticks, 
+#                     metric_bars, Z_label=None,
+#                     Z_value_format=lambda Z: str(Z),
+#                     fillblack=True):
+#     """Create contour plots and return the figure and the axes."""
+#     nrows = len(metric_bars)
+#     ncols = len(Z_1d)
+#     assert data.shape == (*X_grid.shape, nrows, ncols), (
+#         "data shape must be (X, Y, M, Z), where (X, Y) is the shape of both X_grid and Y_grid, "
+#         "M is the number of metrics, and Z is the number of elements in Z_1d"
+#     )
+#     widths = np.ones(ncols + 1)
+#     widths[-1] /= 4
+#     gs_kw = dict(width_ratios=widths)
+#     fig, axes = plt.subplots(ncols=ncols + 1, nrows=nrows, gridspec_kw=gs_kw)
+#     row_counter = 0
+#     for row in range(nrows):
+#         if row  == 2:
+#             metric_bar = metric_bars[row]
+#             for col in range(ncols):
+#                 ax = axes[row, col]
+#                 plt.sca(ax)
+#                 style_plot_limits(xticks, yticks)
+#                 yticklabels = col == 0
+#                 xticklabels = row == nrows - 1
+#                 if fillblack: fill_plot()
+#             #     cp = plt.contourf(X_grid, Y_grid, data[:, :, row, col],
+#             #                       levels=metric_bar.levels,
+#             #                       cmap=metric_bar.cmap)
+#             cbar_ax = axes[row, -1]
+#             # style_axis(ax, xticks, yticks, xticklabels, yticklabels)
+#             # # Only if you want a log-scale colorbar
+            
+#             # pcm = ax.pcolormesh(X_grid, Y_grid, data[:, :, row, col],
+#             #            norm=mcolors.SymLogNorm(linthresh=0.003, linscale=1,
+#             #                                   vmin=-4, vmax=4, base=10),
+#             #            cmap=metric_bar.cmap)
+#             pcm = plt.contourf(X_grid, Y_grid, data[:, :, row, col],
+#                        norm=mcolors.SymLogNorm(linthresh=0.003, linscale=1,
+#                             levels=metric_bar.levels, vmin=-4, vmax=4, base=10),
+#                        cmap=metric_bar.cmap)
+#             fig.colorbar(pcm, ax=cbar_ax, shrink = 0.8)
+#             # else:
+#             #     metric_bar.colorbar(fig, cbar_ax, colorplot = cp, shrink=0.8)
+#         # plt.clim()
+#     for col in range(ncols):
+#         if not col and Z_label:
+#             title = f"{Z_label}: {Z_value_format(Z_1d[col])}"
+#         else:
+#             title = Z_value_format(Z_1d[col])
+#         ax = axes[0, col]
+#         ax.set_title(title)
+#     for ax in axes[:, -1]:
+#         plt.sca(ax)
+#         plt.axis('off')
+#     set_axes_labels(axes[:, :-1], xlabel, ylabel)
+#     plt.subplots_adjust(hspace=0.1, wspace=0.1)
+#     return fig, axes
 
 million_dollar = r"\mathrm{MM\$}"
 MPSP_units = r"$\mathrm{\$} \cdot \mathrm{ton}^{-1}$"
-productivity_units = "$\mathrm{g} \cdot \mathrm{L}^{-1} \cdot \mathrm{hr}^{-1}$"
+
 # VOC_units = "$" + million_dollar + r"\cdot \mathrm{yr}^{-1}$"
 # FCI_units = f"${million_dollar}$"
 VOC_units = r"$\mathrm{g} \cdot \mathrm{L}^{-1}$"
-FCI_units = r"$\mathrm{mg} \cdot \mathrm{L}^{-1}$"
-
+# FCI_units = r"$\mathrm{mg} \cdot \mathrm{L}^{-1}$"
+FCI_units = ""
 
 def tickmarks_from_data(data, accuracy=50, N_points=5):
     dmin = data.min()
@@ -114,35 +175,165 @@ def tickmarks(dmin, dmax, accuracy=50, N_points=5):
 
 # Contour stuff
 
-target_yield = 90
-target_titer = 180
-target_productivity = 1.5
-lab_yield = 80
-lab_titer = 109.9
-lab_productivity = 1
+target_spec_1 = .90 # yield
+target_spec_2 = 180 # titer
+target_spec_3 = 1.5 # productivity
+lab_spec_1 = .80
+lab_spec_2 = 109.9
+lab_spec_3 = 1
 
+# target_spec_2 = 180
+# target_spec_1 = 1451.496
+# target_spec_3 = 7.126
+# lab_spec_2 = 109.9
+# lab_spec_1 = 30
+# lab_spec_3 = 71.26
 
-BDO_price_range = [2.3 * 907.185, 3.2 * 907.185] 
-# temporary price range from https://www.alibaba.com/product-detail/Supply-2-3-butanediol-With-Good_62437411997.html?spm=a2700.7724857.normalList.2.a0b56ac0EDVZ7h&s=p&fullFirstScreen=true
-# previous TEA for 2,3-BDO from monosaccharides: http://dx.doi.org/10.1016/j.biortech.2015.12.005
+# BDO_price_range = [2.3 * 907.185, 3.2 * 907.185] 
+MEK_price_range = [1500, 2800]
+# temporary price range from https://www.alibaba.com/product-detail/hot-sale-C4H8O-butanon-mek_62345760689.html?spm=a2700.7724857.normalList.26.1d194486SbCyfR
+
 
 get_BDO_MPSP = lambda: BDO_tea.solve_price(product) * 907.185 # To USD / ton
 get_BDO_VOC = lambda: BDO_tea.VOC / 1e6 # million USD / yr
 get_BDO_FCI = lambda: BDO_tea.FCI / 1e6 # million USD
 
+
+steps = 60
+
+
+def rel_impact_fn(steps):
+    rel_impact_yield_titer = None
+    lower_bound = 1/10
+    upper_bound = 10
+    middle = 1
+    rel_impact_titer_yield = None
+    max_theoretical_yield = 1
+    max_theoretical_titer = 300
+    d_MPSP_d_yield, d_MPSP_d_titer = None, None
+    
+    fermentor = spec.reactor
+    curr_MPSP = BDO_tea.solve_price(product) * 907.185
+    curr_yield = fermentor.glucose_to_BDO_rxn.X
+    curr_titer = fermentor.outs[0].imass['BDO']/fermentor.outs[0].F_vol
+    
+    multi_for_yield = 1
+    # d_yield = multi_for_yield * rel_step * max_theoretical_yield
+    
+    multi_for_titer = 1
+    # d_titer = multi_for_titer * rel_step * max_theoretical_titer
+    
+    d_yield, d_titer = (0.99-0.30)/steps, (210-70)/steps
+    next_yield = curr_yield + d_yield
+    next_titer = curr_titer + d_titer
+    
+    # if (next_yield, next_titer) in TYM_dict.keys():
+    #     return 1
+    try:
+        if (curr_yield + d_yield > max_theoretical_yield - 0.01
+            and not curr_titer + d_titer > max_theoretical_titer):
+            if steps > 80:
+                rel_impact_yield_titer = upper_bound
+            else:
+                return rel_impact_fn(1.1*steps)
+        elif (curr_titer + d_titer > max_theoretical_titer
+            and not curr_yield + d_yield > max_theoretical_yield - 0.01):
+            if steps > 80:
+                rel_impact_yield_titer = lower_bound
+            else:
+                return rel_impact_fn(1.1*steps)
+        elif (curr_yield + d_yield > max_theoretical_yield - 0.01
+            and curr_titer + d_titer > max_theoretical_titer):
+            rel_impact_yield_titer = middle
+        else:
+            # d_yield = multi_for_yield * rel_step * max_theoretical_yield
+            spec.load_yield(curr_yield + d_yield)
+            BDO_sys.simulate()
+            MPSP_d_yield = BDO_tea.solve_price(product) * 907.185
+            d_MPSP_d_yield = (MPSP_d_yield - curr_MPSP) * multi_for_yield
+            spec.load_yield(curr_yield)
+            # d_titer = multi_for_titer * rel_step * max_theoretical_titer
+            spec.load_titer(curr_titer + d_titer)
+            BDO_sys.simulate()
+            MPSP_d_titer = BDO_tea.solve_price(product) * 907.185
+            d_MPSP_d_titer = (MPSP_d_titer - curr_MPSP) * multi_for_titer
+            
+            rel_impact_yield_titer = d_MPSP_d_yield / d_MPSP_d_titer
+            rel_impact_titer_yield = 1/rel_impact_yield_titer
+            spec.load_titer(curr_titer)
+    except ValueError: # inadequate yield for given titer
+        rel_impact_titer_yield = lower_bound
+    if (rel_impact_titer_yield == None or rel_impact_titer_yield == np.nan
+        or rel_impact_titer_yield<0):
+        return rel_impact_fn(1.1*steps)
+    print(curr_yield, curr_titer, d_MPSP_d_yield, d_MPSP_d_titer, rel_impact_titer_yield)
+    # return 1 + log(rel_impact_yield_titer, 10)
+    return rel_impact_titer_yield
+
 get_BDO_sugars_conc = lambda: sum(R302.outs[0].imass['Glucose', 'Xylose'])/R302.outs[0].F_vol
 
 get_BDO_inhibitors_conc = lambda: 1000*sum(R302.outs[0].imass['AceticAcid', 'Furfural', 'HMF'])/R302.outs[0].F_vol
 
+get_rel_impact_t_y = lambda: rel_impact_fn(steps)
+
 BDO_metrics = [get_BDO_MPSP, get_BDO_sugars_conc, get_BDO_inhibitors_conc]
 
 
-# %% Generate TRY meshgrid
+# %% Generate 3-specification meshgrid and set specification loading functions
 
-titers_1 = np.linspace(40, 200, 180)
-yields_1 = np.linspace(0.45, 0.99, 180)
-productivities_1 = np.array([1])
-titers_1, yields_1 = np.meshgrid(titers_1, yields_1)
+# Yield, titer, productivity (rate)
+spec_1 = np.linspace(0.30, 0.99, steps) # yield
+spec_2 = np.linspace(70, 210, steps) # titer
+spec_3 = np.array([1]) # productivity
+spec.load_spec_1 = spec.load_yield
+spec.load_spec_2 = spec.load_titer
+spec.load_spec_3 = spec.load_productivity
+xlabel = "Yield"
+ylabel = 'Titer [$\mathrm{g} \cdot \mathrm{L}^{-1}$]'
+xticks = [.30, .40, .50, .60, .70, .80, .90, 1.]
+yticks = [70, 105, 140, 175, 210]
+spec_3_units = "$\mathrm{g} \cdot \mathrm{L}^{-1} \cdot \mathrm{hr}^{-1}$"
+
+# # Yield, titer, productivity (rate)
+# spec_1 = np.linspace(0.70, 0.90, 10) # yield
+# spec_2 = np.linspace(90, 130, 10) # titer
+# spec_3 = np.array([1]) # productivity
+# spec.load_spec_1 = spec.load_yield
+# spec.load_spec_2 = spec.load_titer
+# spec.load_spec_3 = spec.load_productivity
+# xlabel = "Yield"
+# ylabel = 'Titer [$\mathrm{g} \cdot \mathrm{L}^{-1}$]'
+# xticks = [.75, .80, .85, .90]
+# yticks = [90, 100, 110, 120, 130]
+# spec_3_units = "$\mathrm{g} \cdot \mathrm{L}^{-1} \cdot \mathrm{hr}^{-1}$"
+
+# # Dehydration conversion, titer, feedstock price
+# spec_1 = np.linspace(0.50, 0.80, 3)
+# spec_2 = np.linspace(40, 200, 3)
+# spec_3 = np.array([7.126, 71.26, 712.26])
+# spec.load_spec_1 = spec.load_dehydration_conversion
+# spec.load_spec_2 = spec.load_titer
+# spec.load_spec_3 = spec.load_feedstock_price
+# xlabel = "Dehydration conversion [%]"
+# ylabel = 'Titer [$\mathrm{g} \cdot \mathrm{L}^{-1}$]'
+# xticks = [.50, .60, .70, .80]
+# yticks = [40, 80, 120, 160, 200]
+# spec_3_units = "$\mathrm{\$} \cdot \mathrm{dry-ton}^{-1}$"
+
+# # Byproducts (Acetoin and IBA) selling price, titer, feedstock price
+# spec_1 = np.linspace(1, 2000, 10)
+# spec_2 = np.linspace(40, 200, 10)
+# spec_3 = np.array([7.126, 71.26, 712.26])
+# spec.load_spec_1 = spec.load_byproducts_price
+# spec.load_spec_2 = spec.load_titer
+# spec.load_spec_3 = spec.load_feedstock_price
+# xlabel = "Acetoin and IBA selling price [$\mathrm{\$} \cdot \mathrm{ton}^{-1}$]"
+# ylabel = 'Titer [$\mathrm{g} \cdot \mathrm{L}^{-1}$]'
+# xticks = [0, 400, 800, 1200, 1600, 2000]
+# yticks = [40, 80, 120, 160, 200]
+# spec_3_units = "$\mathrm{\$} \cdot \mathrm{dry-ton}^{-1}$"
+
+spec_1, spec_2 = np.meshgrid(spec_1, spec_2)
 
 # titers_2 = np.linspace(70, 190, 5)
 # yields_2 = np.linspace(0.70, 0.90, 5)
@@ -153,9 +344,15 @@ titers_1, yields_1 = np.meshgrid(titers_1, yields_1)
 
 
 # %% Run TRY analysis 
-data_1 = BDO_data = spec.evaluate_across_TRY(
-        BDO_sys, titers_1, yields_1, BDO_metrics, productivities_1)
 
+data_1 = BDO_data = spec.evaluate_across_specs(
+        BDO_sys, spec_1, spec_2, BDO_metrics, spec_3)
+
+# spec.load_spec_1 = spec.load_dehydration_conversion
+# spec.load_spec_2 = spec.load_titer
+# spec.load_spec_3 = spec.load_feedstock_price
+# data_1 = BDO_data = spec.evaluate_across_specs(
+#         BDO_sys, spec_1, spec_2, BDO_metrics, spec_3)
 # utilizes_xylose = True
 # data_2 = BDO_data = spec.evaluate_across_TRY(
 #         BDO_sys, titers_2, yields_2, BDO_metrics, productivities_2)
@@ -171,8 +368,8 @@ file_to_save = 'BDO_TRY_%s.%s.%s-%s.%s'%(dateTimeObj.year, dateTimeObj.month, da
 np.save(file_to_save, data_1)
 
 # %% Load previously saved data
-# file_to_load = file_to_save
-file_to_load = 'BDO_TRY_2020.8.19-2.44'
+file_to_load = file_to_save
+# file_to_load = 'BDO_TRY_2020.8.19-2.44'
 data_1 = np.load(file_to_load+'.npy')
 data_1_copy = copy.deepcopy(data_1)
 
@@ -217,15 +414,10 @@ def make_inhibited_region_infeasible():
 # make_inhibited_region_infeasible()
 
 
-
 # %% Plot contours
 # data_2 = data_1
 
-xlabel = 'Titer [$\mathrm{g} \cdot \mathrm{L}^{-1}$]'
-ylabel = "Yield [%]"
 
-xticks = [40, 80, 120, 160, 200]
-yticks = [45, 54, 63, 72, 81, 90, 99]
 
 
 def plot(data, titers, yields, productivities, 
@@ -234,13 +426,13 @@ def plot(data, titers, yields, productivities,
                              Metric_1_tickmarks, 200),
                    MetricBar('Total sugars', VOC_units, CABBI_blue_colormap(), # plt.cm.get_cmap('magma_r'),
                              Metric_2_tickmarks, 45),
-                   MetricBar("Total inhibitors", FCI_units,
-                             CABBI_grey_colormap(), # plt.cm.get_cmap('bone_r'),
-                             Metric_3_tickmarks, 60))
+                   MetricBar("$\mathrm{1 + log}_{10}$" +"(relative impact)", FCI_units,
+                             plt.cm.get_cmap('BrBG'), # plt.cm.get_cmap('bone_r'),
+                             Metric_3_tickmarks, 77))
     
-    return plot_contour_2d(titers, 100.*yields, productivities, data, 
+    return plot_contour_2d(titers, yields, productivities, data, 
                                 xlabel, ylabel, xticks, yticks, metric_bars, 
-                                Z_value_format=lambda Z: f"{Z:.1f} [{productivity_units}]",
+                                Z_value_format=lambda Z: f"{Z:.1f} [{spec_3_units}]",
                                 fillblack=False)
 
 
@@ -261,25 +453,39 @@ Metric_3_tickmarks = tickmarks(
 
 # Metric_3_tickmarks = [0.0*1000, 0.24*1000, 0.48*1000, 0.72*1000, 0.96*1000, 1.2*1000]
 
-Metric_1_tickmarks = [1800, 2700, 3600, 4500, 5400]
+Metric_1_tickmarks = [3000, 3500, 4000, 4500, 5000]
 Metric_2_tickmarks = [0, 75, 150, 225, 300]
-Metric_3_tickmarks = [0, 300, 600, 900, 1200]
-make_oversaccharine_region_infeasible()
-make_inhibited_region_infeasible()
+# Metric_3_tickmarks = [.2, 1., 1.8]
 
-fig, axes = plot(data_1_copy, titers_1, yields_1, productivities_1, Metric_1_tickmarks, Metric_2_tickmarks, Metric_3_tickmarks)
-percent_yields_1 = 100 * yields_1
+metric_bars = (MetricBar('MPSP', MPSP_units, CABBI_green_colormap(),
+                         Metric_1_tickmarks, 200),
+               MetricBar('Total sugars', VOC_units, CABBI_blue_colormap(), # plt.cm.get_cmap('magma_r'),
+                         Metric_2_tickmarks, 45),
+               MetricBar("Relative impact on MPSP\n[impact of titer : impact of yield]", FCI_units,
+                         plt.cm.get_cmap('BrBG'), # plt.cm.get_cmap('bone_r'),
+                         Metric_3_tickmarks, 77))
+    
+    
+if BDO_metrics[1] is get_BDO_sugars_conc:
+    make_oversaccharine_region_infeasible()
+if BDO_metrics[2] is get_BDO_inhibitors_conc:
+    make_inhibited_region_infeasible()
+
+fig, axes = plot(data_1_copy, spec_1, spec_2, spec_3, Metric_1_tickmarks, Metric_2_tickmarks, Metric_3_tickmarks)
+# spec_2 = 100 * spec_2
 index_feas_1 = d1_Metric2[:, :, 0]<150.
 index_feas_2 = d1_Metric3[:, :, 0]<1000.
 CS1, CS2, CS3, CS4 = 0, 0, 0, 0
-for i, ax_col in enumerate(axes[:, :len(productivities_1)].transpose()):
+for i, ax_col in enumerate(axes[:, :len(spec_3)].transpose()):
     MSP = data_1_copy[:, :, 0, i]
     sugars_orig = data_1[:, :, 1, i]
     inhibitors_orig = data_1[:, :, 2, i]
     MSP_orig = data_1[:, :, 0, i]
     j=0
     for ax in ax_col:
+        
         plt.sca(ax)
+        ax.set_facecolor('black')
         # ax.patch.set_facecolor(CABBI_brown)
         
         if j==0: # MPSP plot only
@@ -289,14 +495,14 @@ for i, ax_col in enumerate(axes[:, :len(productivities_1)].transpose()):
             # Z_infeas_1[index_infeas_2] = np.nan
             # Z_infeas_1[index_infeas_1] = np.nan
             Z_infeas_2[index_feas_2] = np.nan
-            Z_infeas_3[(index_feas_1 | index_feas_2)] = np.nan
+            # Z_infeas_3[(index_feas_1 | index_feas_2)] = np.nan
             
-            CS2 = plt.contourf(titers_1, percent_yields_1, Z_infeas_1, zorder=0,
+            CS2 = plt.contourf(spec_1, spec_2, Z_infeas_1, zorder=0,
                               levels=1, colors=[oversaccharine_shadecolor])
-            CS3 = plt.contourf(titers_1, percent_yields_1, Z_infeas_2, zorder=0,
-                              levels=1, colors=[inhibited_shadecolor])
-            CS4 = plt.contourf(titers_1, percent_yields_1, Z_infeas_3, zorder=0,
-                              levels=1, colors=[overlap_color])
+            # CS3 = plt.contourf(spec_1, spec_2, Z_infeas_2, zorder=0,
+            #                   levels=1, colors=[inhibited_shadecolor])
+            # CS4 = plt.contourf(spec_1, spec_2, Z_infeas_3, zorder=0,
+            #                   levels=1, colors=[overlap_color])
             
 
                 
@@ -308,44 +514,44 @@ for i, ax_col in enumerate(axes[:, :len(productivities_1)].transpose()):
             # make_oversaccharine_region_infeasible()
             # make_inhibited_region_infeasible()
             
-            CS1 = plt.contourf(titers_1, percent_yields_1, MSP, zorder=1e6,
-                              levels=BDO_price_range, colors=[marketrange_shadecolor])
+            CS1 = plt.contourf(spec_1, spec_2, MSP, zorder=1e6,
+                              levels=MEK_price_range, colors=[marketrange_shadecolor])
             CS1_lines = plt.contour(CS1, zorder=1e6, linestyles='dashed', linewidths=1.,
-                        levels=BDO_price_range, colors=[linecolor_dark])
-            plt.clabel(CS1_lines, levels=BDO_price_range, inline_spacing = 0.3, \
+                        levels=MEK_price_range, colors=[linecolor_dark])
+            plt.clabel(CS1_lines, levels=MEK_price_range, inline_spacing = 0.3, \
                        fmt=lambda x: format(x,'.0f'), inline=True, fontsize=10)
             CS1_lines = plt.contour(CS1, zorder=1e6, linestyles='dashed', linewidths=1.,
-                        levels=BDO_price_range, colors=[linecolor_dark])
-            plt.clabel(CS1_lines, levels=BDO_price_range, inline_spacing = 0.3, \
+                        levels=MEK_price_range, colors=[linecolor_dark])
+            plt.clabel(CS1_lines, levels=MEK_price_range, inline_spacing = 0.3, \
                        fmt=lambda x: format(x,'.0f'), inline=True, fontsize=10)
             
             CS1a_lines = plt.contour(CS1, zorder=1e6, linestyles='solid', linewidths=0.5,
-                        levels=[1800, 2400, 3600, 4200], colors=[linecolor_dark])
-            plt.clabel(CS1a_lines, levels=[1800, 2400, 3600, 4200], inline_spacing = 0.1, \
+                        levels=[3300, 3600, 3900, 4500], colors=[linecolor_dark])
+            plt.clabel(CS1a_lines, levels=[3300, 3600, 3900, 4500], inline_spacing = 0.1, \
                        fmt=lambda x: format(x,'.0f'), inline=True, fontsize=10)
-        elif j==1:
-            CS2_lines = plt.contour(titers_1, percent_yields_1, sugars_orig, zorder=1e6, linestyles='dashed', linewidths=1.,
+        elif j==1: # sugars plot only
+            CS2_lines = plt.contour(spec_1, spec_2, sugars_orig, zorder=1e6, linestyles='dashed', linewidths=1.,
             levels=[150.], colors=[linecolor_dark])
             plt.clabel(CS2_lines, levels=[150.], inline_spacing = 0.3, \
                        fmt=lambda x: format(x,'.0f'), inline=True, fontsize=10)
-            CS2a_lines = plt.contour(titers_1, percent_yields_1, sugars_orig, zorder=1e6, linestyles='solid', linewidths=.5,
+            CS2a_lines = plt.contour(spec_1, spec_2, sugars_orig, zorder=1e6, linestyles='solid', linewidths=.5,
             levels=[75.], colors=[linecolor_dark])
             plt.clabel(CS2a_lines, levels=[75.], inline_spacing = 0.1, \
                        fmt=lambda x: format(x,'.0f'), inline=True, fontsize=10)
             
-        elif j==2:
-            CS3_lines = plt.contour(titers_1, percent_yields_1, inhibitors_orig, zorder=1e6, linestyles='dashed', linewidths=1.,
-                        levels=[1000.], colors=[linecolor_light])
-            plt.clabel(CS3_lines, levels=[1000.], inline_spacing = 0.3, \
-                       fmt=lambda x: format(x,'.0f'), inline=True, fontsize=10)
-            CS3a_lines = plt.contour(titers_1, percent_yields_1, inhibitors_orig, zorder=1e6, linestyles='solid', linewidths=.5,
-                        levels=[500.], colors=[linecolor_light])
-            plt.clabel(CS3a_lines, levels=[500.], inline_spacing = 0.3, \
-                       fmt=lambda x: format(x,'.0f'), inline=True, fontsize=10)
-            # infeas_1 = titers_1.copy()
+        elif j==2: # inhibitors plot only
+            CS3_lines = plt.contour(spec_1, spec_2, inhibitors_orig, zorder=1e6, linestyles='dashed', linewidths=1.,
+                        levels=[.2, .4, .8, 1.2, 1.6], colors=[linecolor_dark])
+            plt.clabel(CS3_lines, levels=[.2, .4, .8, 1.2, 1.6], inline_spacing = 0.3, \
+                        fmt=lambda x: format(x,'.1f'), inline=True, fontsize=10)
+            # CS3a_lines = plt.contour(spec_1, spec_2, inhibitors_orig, zorder=1e6, linestyles='solid', linewidths=.5,
+            #             levels=[500.], colors=[linecolor_light])
+            # plt.clabel(CS3a_lines, levels=[500.], inline_spacing = 0.3, \
+            #            fmt=lambda x: format(x,'.0f'), inline=True, fontsize=10)
+            # infeas_1 = spec_1.copy()
             # infeas_1[d1_Metric3<1000.] = np.nan
-            # infeas_1 = titers_1[np.where(d1_Metric3>1000.)[0:2]], 100*yields_1[np.where(d1_Metric3>1000.)[0:2]]
-            # infeas_2 = titers_1[np.where(d1_Metric2>150.)[0:2]], 100*yields_1[np.where(d1_Metric2>150.)[0:2]]
+            # infeas_1 = spec_1[np.where(d1_Metric3>1000.)[0:2]], 100*spec_2[np.where(d1_Metric3>1000.)[0:2]]
+            # infeas_2 = spec_1[np.where(d1_Metric2>150.)[0:2]], 100*spec_2[np.where(d1_Metric2>150.)[0:2]]
             
             
             
@@ -357,21 +563,21 @@ for i, ax_col in enumerate(axes[:, :len(productivities_1)].transpose()):
             
         j+=1
         
-add_markers = True
+add_markers = False
 
 if add_markers:
     
-    axes_lab_productivity = axes[:, 0]
-    for i, ax in enumerate(axes_lab_productivity):
+    axes_lab_spec_3 = axes[:, 0]
+    for i, ax in enumerate(axes_lab_spec_3):
         plt.sca(ax)
         # plt.clabel(CS, fmt=lambda x: format(x,'.0f'), inline=1, fontsize=10)
-        plot_scatter_points([lab_titer], [lab_yield], marker='^', s=80, color=markercolor,
+        plot_scatter_points([lab_spec_1], [lab_spec_2], marker='^', s=80, color=markercolor,
                             edgecolor=edgecolor)
     
-    axes_target_productivity = axes[:, 0]
-    for ax in axes_target_productivity:
+    axes_target_spec_3 = axes[:, 0]
+    for ax in axes_target_spec_3:
         plt.sca(ax)
-        plot_scatter_points([target_titer], [target_yield], marker='s', s=80, color=markercolor,
+        plot_scatter_points([target_spec_1], [target_spec_2], marker='s', s=80, color=markercolor,
                             edgecolor=edgecolor)
     
 plt.show()
@@ -381,7 +587,88 @@ fig_to_save = file_to_save + '.png'
 plt.savefig(fig_to_save, format = 'png', dpi=500)
 
 
+# %% Functions to get relative impact data faster from generated MPSP data
+spec_1_r = np.round(spec_1, 4)
+spec_2_r = np.round(spec_2, 4)
 
+
+# def get_metric_for_XY_coordinates(X,Y, spec_1, spec_2, tmetric, Z_coord=0):
+#     metric = tmetric[:,:,Z_coord]
+#     x = list(spec_1[0]).index(X)
+#     y = list(spec_2[:,0]).index(Y)
+#     return metric[y][x]
+
+
+def rel_impact_fn_fast(x, y, next_x, next_y, metric, Z_coord = 0):
+    lower_bound = 1/10
+    upper_bound = 10
+    middle = 1
+    rel_impact_titer_yield = None
+    max_x = len(Xs) - 1
+    max_y = len(Ys) - 1
+    d_MPSP_d_yield, d_MPSP_d_titer = None, None
+    if metric[y][x][Z_coord] == np.nan:
+        rel_impact_titer_yield = np.nan
+    elif next_x > max_x  and not next_y > max_y:
+        rel_impact_titer_yield = upper_bound
+        
+    elif next_y > max_y and not next_x > max_x:
+        rel_impact_titer_yield = lower_bound
+        
+    elif next_x > max_x  and next_y > max_y:
+        rel_impact_titer_yield = middle
+    else:
+        curr_MPSP = metric[y][x][Z_coord]        
+        d_MPSP_d_yield = metric[y][next_x][Z_coord] - curr_MPSP
+        d_MPSP_d_titer = metric[next_y][x][Z_coord] - curr_MPSP
+        rel_impact_titer_yield = d_MPSP_d_titer/d_MPSP_d_yield
+    if rel_impact_titer_yield < 0:
+        return rel_impact_fn_fast(x, y, next_x+1, next_y+1, metric)
+    print(x, y, next_x, next_y,'\n', d_MPSP_d_yield, d_MPSP_d_titer, rel_impact_titer_yield)
+    # return 1 + log(rel_impact_yield_titer, 10)
+    return rel_impact_titer_yield
+
+Xs = spec_1_r[0]
+Ys = spec_2_r[:,0]
+
+
+def get_all_rel_imp_fast(Xs=Xs, Ys=Ys, metric=d1_Metric1, step_size = 5):
+    all_rel_imp = np.nan * np.ones((len(Ys), len(Xs)))
+    for x in range(len(Xs)):
+        for y in range(len(Ys)):
+            next_x, next_y = x + step_size, y + step_size
+            all_rel_imp[y][x] = rel_impact_fn_fast(x, y, next_x, next_y, metric)
+    return all_rel_imp
+            
+
+# %% Relative impact plot
+fig, ax = plt.subplots(1, 2)
+Z_label=None,
+Z_value_format=lambda Z: str(Z),
+metric_bar = metric_bars[2]
+arr1 = get_all_rel_imp_fast()
+arr1 = np.where(arr1==1e-4, 1/10, arr1)
+arr1 = np.where(arr1==1e4, 10, arr1)
+X, Y, Z = spec_1, spec_2, arr1
+levels3 = list(np.linspace(1/20, 1-(1-1/20)/38, 38)) + [1.] + list(np.linspace(1+ (20-1)/38, 20, 38))
+plt.sca(ax[0])
+style_plot_limits(xticks, yticks)
+pcm = plt.contourf(X, Y, Z, levels=levels3,
+                   norm=mcolors.DivergingNorm(vmin=1/10., vcenter=1., vmax=10),
+                   cmap = metric_bar.cmap)
+# fig.colorbar(pcm, ax=ax[0], extend='max')
+set_axes_labels(np.array([ax]), xlabel, ylabel)
+rel_imp_lines = plt.contour(X, Y, Z, zorder=1e6, linestyles='dashed', linewidths=1., levels=[.5, 1., 1.2, 1.5,  2,3,4,5,6,7], colors=[linecolor_dark])
+plt.clabel(rel_imp_lines, levels=[.5, 1., 1.2, 1.5,  2,3,4,5,6,7], inline_spacing = 0.03, \
+                fmt=lambda x: format(x,'.1f'), inline=True, fontsize=8)
+ax[0].set_facecolor('black')
+plt.sca(ax[1])
+plt.axis('off')
+ticks = [0., 0.1, 0.3, 0.6, 0.8, 1., 3., 6., 8., 10.]
+cb = fig.colorbar(mappable = pcm, ax=ax[1], shrink=0.6, extend = 'both', ticks = ticks)
+plt.subplots_adjust(hspace=0.1, wspace=0.1)
+ax[1].set_title(metric_bar.title)
+plt.show()
 # fig, axes = plot(data_2, titers_2, yields_2, productivities_2, Metric_1_tickmarks, Metric_2_tickmarks, Metric_3_tickmarks)
 # percent_yields_2 = 100 * yields_2
 # for i, ax_col in enumerate(axes[:, :3].transpose()):
@@ -389,21 +676,21 @@ plt.savefig(fig_to_save, format = 'png', dpi=500)
 #     for ax in ax_col:
 #         plt.sca(ax)
 #         CS = plt.contourf(titers_2, percent_yields_2, MSP, zorder=1e6,
-#                           levels=BDO_price_range, colors=[marketrange_shadecolor])
+#                           levels=MEK_price_range, colors=[marketrange_shadecolor])
 #         plt.contour(CS,zorder=1e6, linestyles='dashed', linewidths=1.,
-#                     levels=BDO_price_range, colors=[linecolor_dark])
+#                     levels=MEK_price_range, colors=[linecolor_dark])
 
-# axes_lab_productivity = axes[:, 1]
-# for i, ax in enumerate(axes_lab_productivity):
+# axes_target_spec_3 = axes[:, 1]
+# for i, ax in enumerate(axes_target_spec_3):
 #     plt.sca(ax)
 #     # plt.clabel(CS, fmt=lambda x: format(x,'.0f'), inline=1, fontsize=10)
-#     plot_scatter_points([lab_titer], [lab_yield], marker='p', s=125, color=markercolor,
+#     plot_scatter_points([target_spec_2], [target_spec_1], marker='p', s=125, color=markercolor,
 #                         edgecolor=edgecolor)
 
-# axes_target_productivity = axes[:, 1]
-# for ax in axes_target_productivity:
+# axes_target_spec_3 = axes[:, 1]
+# for ax in axes_target_spec_3:
 #     plt.sca(ax)
-#     plot_scatter_points([target_titer], [target_yield], marker='h', s=125, color=markercolor,
+#     plot_scatter_points([target_spec_2], [target_spec_1], marker='h', s=125, color=markercolor,
 #                         edgecolor=edgecolor)
     
 

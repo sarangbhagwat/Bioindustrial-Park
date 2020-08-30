@@ -30,7 +30,7 @@ _chemical_2020to2016 = 102.5 / 113.8 # average of Jan and Feb
 # From USD/dry-ton to USD/kg in 2016$, 20% moisture content
 # changed from Humbird et al., 2011 to Davis et al., 2018
 feedstock_price = 71.26 / _kg_per_ton * 0.8 
-		
+
 # 2.18 is the average whole-sale ethanol price between 2010-2019 in 2016 $/gal 	
 # based on Annual Energy Outlook (AEO) from Energy Information Adiministration (EIA)	
 # (https://www.eia.gov/outlooks/aeo/), which is $0.732/gal and similar to the 	
@@ -105,8 +105,12 @@ natural_gas_price = 4.70/1e3*_ft3_per_m3*CH4_V * (1e3/CH4_MW)
 # USD 383.13 for 2.5kg (largest available size order), accessed 06/11/2020
 amberlyst_15_price = 153.252 * _chemical_2020to2016
 
-# Initial value	
-BDO_price = 1.88
+# https://www.alibaba.com/product-detail/Tricalcium-Phosphate-Tricalcium-Phosphate-TCP-Tricalcium_60744013678.html?spm=a2700.galleryofferlist.0.0.42f16684C9iJhz&s=p
+TCP_price = 850 / _kg_per_ton # tricalcium (di)phosphate
+
+
+# BDO_price = 1.88 # initial value
+MEK_price = 1.88 # initial value
 
 # Currently not in use
 # Methanol price from Goellner et al., production from natural gas (Case 3),
@@ -115,38 +119,45 @@ BDO_price = 1.88
 methanol_price = (311.17+345.39)/2/_kg_per_ton * _chemical_2011to2016
 
 
-# Acetoin product selling price (assumed)
-acetoin_price = 0
-
-
+# Acetoin product selling price
+# https://www.alibaba.com/product-detail/Acetoin-CAS-NO-513-86-0_60673118759.html?spm=a2700.galleryofferlist.0.0.4d906f82dIhSkn
+# acetoin_price = 5.925
+acetoin_price = 3. # assumed
+# Isobutyraldehyde product selling price
+# https://www.alibaba.com/product-detail/China-manufacture-Isobutyraldehyde-price_60837108075.html?spm=a2700.galleryofferlist.0.0.753369fcbZcNhe
+# IBA_price = 1.2
+IBA_price = 0. # assumed
+ 
 # All in 2016$/kg
-price = {'BDO': BDO_price, 	
+price = {'MEK': MEK_price,
+         'TCP': TCP_price,
+         'IBA': IBA_price,
          'Acetoin': acetoin_price,
-         'Feedstock': feedstock_price, 	
+         'Feedstock': feedstock_price,
          'Sulfuric acid': 0.0430 * _lb_per_kg,	
          # 0.1900 is for NH3	
          'AmmoniumHydroxide': 0.1900 * _lb_per_kg * 17.031/35.046,	
-         'CSL': 0.0339 * _lb_per_kg,	
+         'CSL': 0.0339 * _lb_per_kg,
          'Caustics': 0.2384 * _lb_per_kg * 0.5, # 50 wt% NaOH/water mixture	
          'Boiler chems': 2.9772 * _lb_per_kg,	
-         'Lime': lime_price,	
+         'Lime': lime_price,
          'Cooling tower chems': 1.7842 * _lb_per_kg,	
          'Makeup water': 0.0002 * _lb_per_kg,	
          # Cost of ash is negative because it's a product stream	
-         'Ash disposal': ash_disposal_price,	
-         'Gypsum': gypsum_price,	
+         'Ash disposal': ash_disposal_price,
          'Electricity': 0.070, # AEO from EIA, 2010-2019 average (0.067-0.074 range)	
          # $6.16/kg protein in 2016$, P25 of Davis et al., 2018	
-         'Enzyme': 6.16,	
-         'Ethanol': ethanol_price,	
+         'Enzyme': 6.16,
          'DPHP': DPHP_price,
-         'Denaturant': denaturant_price,	
          'Baghouse bag': baghouse_bag_price,	
          'Natural gas': natural_gas_price,
-         'Amberlyst15': amberlyst_15_price,
+         'Methanol': methanol_price,
+         'Ethanol': ethanol_price,
          # Below currently not in use
-         'DAP': 0.1645 * _lb_per_kg,	
-         'Methanol': methanol_price}
+         'Gypsum': gypsum_price,
+         'Denaturant': denaturant_price,
+         'Amberlyst15': amberlyst_15_price,
+         'DAP': 0.1645 * _lb_per_kg}
     
 
 
@@ -159,6 +170,7 @@ _mps.T = 233 + 273.15
 _hps.T = 266 + 273.15
 
 _cooling = bst.HeatUtility.get_cooling_agent('cooling_water')
+_chilled = bst.HeatUtility.get_cooling_agent('chilled_water')
 _cooling.regeneration_price = 0
 _cooling.T = 28 + 273.15
 _cooling.T_limit = _cooling.T + 9
@@ -166,7 +178,7 @@ _cooling.T_limit = _cooling.T + 9
 # Side steam in CHP not a heat utility, thus will cause problem in TEA utility
 # cost calculation if price not set to 0 here, costs for regeneration of heating
 # and cooling utilities will be considered as CAPEX and OPEX of CHP and CT, respectively
-for i in (_lps, _mps, _hps, _cooling):
+for i in (_lps, _mps, _hps, _cooling, _chilled):
     i.heat_transfer_price = i.regeneration_price = 0
     # if i == _cooling: continue
     # i.heat_transfer_efficiency = 0.85

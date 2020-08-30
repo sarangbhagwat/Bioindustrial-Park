@@ -22,8 +22,8 @@ lactic acid from lignocellulosic feedstocks
     https://doi.org/10.1021/acssuschemeng.9b07040
     
 [2] Li et al., Tailored Pretreatment Processes for the Sustainable Design of
-    Lignocellulosic Biorefineries across the Feedstock Landscape. Submitted.
-    July, 2020.
+    Lignocellulosic Biorefineries across the Feedstock Landscape. Submitted,
+    2020.
 
 @author: yalinli_cabbi
 """
@@ -38,7 +38,8 @@ lactic acid from lignocellulosic feedstocks
 import numpy as np
 import pandas as pd
 from biosteam.utils import TicToc
-from lactic import models
+from lactic.system import R301
+from lactic.analyses import models
 
 
 # %%
@@ -51,7 +52,8 @@ from lactic import models
 timer = TicToc('timer')
 timer.tic()
 
-model = models.model_feedstock
+model = models.model_carbs_price
+R301.set_titer_limit = True
 set_carbs = models.set_carbs
 prices = models.prices
 
@@ -65,46 +67,65 @@ samples_1d = model.sample(N=N_simulation, rule='L')
 samples = samples_1d[:, np.newaxis]
 model.load_samples(samples)
 
-coordinate = np.linspace(0.4, 0.7, 31) # step = 0.01, ascending
-# coordinate = np.linspace(0.7, 0.4, 31) # step = 0.01, descending
-
-# coordinate = np.array([0.4, 0.5, 0.589])
+carb_contents = np.arange(0.25, 0.701, 0.01)
+# 0.59 is the baseline
+carb_contents = [0.59] + carb_contents.tolist()
 
 data = model.evaluate_across_coordinate(
-    'Feedstock carbohydate content', set_carbs, coordinate, notify=True)
+    'Carbohydate content', set_carbs, carb_contents, notify=True)
 
-MPSPs_NPVs = pd.DataFrame({
-    ('Parameter','Carbohydrate content [dry mass %]'): coordinate})
+results = pd.DataFrame({
+    ('Parameter', 'Carbohydrate content [dw%]'): carb_contents})
 
-for (i, j) in zip(data.keys(), data.values()):
-    MPSPs_NPVs[i] = j[0]
+for i in data.keys():
+    results[i] = data[i][0]
 
-'''Organize data for easy plotting'''
-x_axis = [f'{i:.3f}' for i in coordinate]
-x_axis *= len(prices)
-y_axis = sum(([f'{i:.0f}']*len(coordinate) for i in prices), [])
+'''Organize TEA data for easy plotting'''
+TEA_x = [i for i in carb_contents]
+TEA_x *= len(prices)
+TEA_y = sum(([i]*len(carb_contents) for i in prices), [])
 
-MPSPs = []
-NPVs = []
-for i in range(MPSPs_NPVs.columns.shape[0]):
-    if 'Minimum product selling price' in MPSPs_NPVs.columns[i][1]:
-        MPSPs +=  MPSPs_NPVs[MPSPs_NPVs.columns[i]].to_list()
-    if 'Net present value' in MPSPs_NPVs.columns[i][1]:
-        NPVs +=  MPSPs_NPVs[MPSPs_NPVs.columns[i]].to_list()
+MPSPs = [[], []]
+GWPs = [[], []]
+freshwater = [[], []]
+for i in range(results.columns.shape[0]):
+    if 'MPSP' in results.columns[i][1]:
+        MPSPs[0] +=  results[results.columns[i]].to_list()
+    if 'GWP' in results.columns[i][1]:
+        GWPs[0] +=  results[results.columns[i]].to_list()
+    if 'Freshwater' in results.columns[i][1]:
+        freshwater[0] +=  results[results.columns[i]].to_list()
 
-plot_data = pd.DataFrame()
-plot_data['Carbohydrate content [dry mass %]'] = x_axis
-plot_data['Price [$/dry-ton]'] = y_axis
-plot_data['Minimum product selling price [$/kg]'] = MPSPs
-plot_data['Net present value [$]'] = NPVs
+TEA_plot_data = pd.DataFrame({
+    'Carbohydrate content [dw%]': TEA_x,
+    'Price [$/dry-ton]': TEA_y,
+    'MPSP [$/kg]': MPSPs[0]
+    })
+
+LCA_plot_data = pd.DataFrame({
+    'Carbohydrate content [dw%]': carb_contents,    
+    'GWP [kg CO2-eq/kg]': GWPs[0],
+    'Freshwater [kg H2O/kg]': freshwater[0]
+    })
 
 '''Output to Excel'''
-with pd.ExcelWriter('3_feedstock_up.xlsx') as writer:
-    MPSPs_NPVs.to_excel(writer, sheet_name='Evaluation data')
-    plot_data.to_excel(writer, sheet_name='For plotting')
+with pd.ExcelWriter('3_carbs-price.xlsx') as writer:
+    TEA_plot_data.to_excel(writer, sheet_name='TEA plotting')
+    LCA_plot_data.to_excel(writer, sheet_name='LCA plotting')
+    results.to_excel(writer, sheet_name='Raw data')
 
-run_number = N_simulation * len(coordinate)
+run_number = samples.shape[0]*len(carb_contents)
 time = timer.elapsed_time / 60
 print(f'\nSimulation time for {run_number} runs is: {time:.1f} min')
+
+
+
+
+
+
+
+
+
+
 
 

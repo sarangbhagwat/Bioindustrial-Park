@@ -312,22 +312,26 @@ FermMicrobeXyl = chemical_copied('FermMicrobeXyl', FermMicrobe)
 # Group chemicals
 # =============================================================================
 
+#!!! Sarang please review and update this dict, it affects simulation
 chemical_groups = dict(
     OtherSugars = ('Arabinose', 'Mannose', 'Galactose', 'Cellobiose', 'Sucrose'),
     SugarOligomers = ('GlucoseOligomer', 'XyloseOligomer', 'GalactoseOligomer',
                       'ArabinoseOligomer', 'MannoseOligomer'),
-    OrganicSolubleSolids = ('AmmoniumAcetate', 'SolubleLignin', 'Extract', 'CSL',
-                            'LacticAcid', 'CalciumLactate', 'CalciumAcetate',
-                            'EthylLactate', 'EthylAcetate', 'SuccinicAcid',
-                            'CalciumSuccinate', 'EthylSuccinate', 
-                            'Methanol', 'MethylLactate', 'MethylAcetate'),
-    InorganicSolubleSolids = ('AmmoniumSulfate', 'DAP', 'NaOH', 'HNO3', 'NaNO3',
+    OrganicSolubleSolids = ('AmmoniumAcetate', 'SolubleLignin', 'Extract', 'CSL'),
+                            # 'LacticAcid', 'CalciumLactate', 'CalciumAcetate',
+                            # 'EthylLactate', 'EthylAcetate', 'SuccinicAcid',
+                            # 'CalciumSuccinate', 'EthylSuccinate', 
+                            # 'Methanol', 'MethylLactate', 'MethylAcetate'),
+    InorganicSolubleSolids = ('AmmoniumSulfate', 'NaOH', 'HNO3', 'NaNO3',
+                              # 'DAP',
                               'BoilerChems', 'Na2SO4', 'AmmoniumHydroxide'),
     Furfurals = ('Furfural', 'HMF'),
+    #!!! I suspect you want to add some chemicals here
     OtherOrganics = ('Denaturant', 'Xylitol'),
     COSOxNOxH2S = ('NitricOxide', 'NO2', 'SO2', 'CarbonMonoxide', 'H2S'),
     Proteins = ('Protein', 'Enzyme', 'DenaturedEnzyme'),
-    CellMass = ('WWTsludge', 'FermMicrobe', 'FermMicrobeXyl'),
+    CellMass = ('WWTsludge', 'FermMicrobe'),
+                # 'FermMicrobeXyl'),
     # Theoretically P4O10 should be soluble, but it's the product of the
     # auto-populated combusion reactions so should in solid phase, however no
     # P4O10 will be generated in the system as no P-containing chemicals 
@@ -337,7 +341,7 @@ chemical_groups = dict(
     OtherStructuralCarbohydrates = ('Glucan', 'Xylan', 'Lignin', 'Arabinan', 
                                     'Mannan', 'Galactan'),
     SeparatelyListedOrganics = ('Ethanol', 'Glucose', 'Xylose', 'AceticAcid',
-                                'Acetate'),
+                                'Acetate', 'Lignin'),
     SpearatedlyListedOthers = ('H2O', 'NH3', 'H2SO4', 'CO2', 'CH4', 'O2', 'N2')
     )
 
@@ -355,8 +359,8 @@ insolubles = sum([chemical_groups[i] for i in insoluble_groups], ('WWTsludge',))
 
 # This group is needed in the system.py module
 combustibles = soluble_organics + list(chemical_groups['OtherStructuralCarbohydrates'])
-combustibles.remove('CalciumLactate')
-combustibles.remove('CalciumAcetate')
+# combustibles.remove('CalciumLactate')
+# combustibles.remove('CalciumAcetate')
 combustibles.extend(['WWTsludge','NH3', 'NitricOxide', 'CarbonMonoxide', 'H2S', 'CH4'])
 
 # Chemicals that will be modeled in Distallation/Flash units,
@@ -368,6 +372,9 @@ combustibles.extend(['WWTsludge','NH3', 'NitricOxide', 'CarbonMonoxide', 'H2S', 
 #                           'AceticAcid', 'MethylAcetate', 'MethylLactate',
 #                           'EthylLactate', 'Furfural', 'SuccinicAcid', 'LacticAcid', 'HMF']
 
+#!!! Sarang please review and update this, I'm not sure what chemicals are used
+# in the biorefinery, getting rid of unused chemicals (i.e., exclude them from chems)
+# should help reduce simulation time
 phase_change_chemicals = ['Methanol', 'Ethanol', 'H2O', 'EthylAcetate', 'Denaturant',
                           'AceticAcid', 'MethylAcetate', 'MethylLactate',
                           'EthylLactate', 'Furfural', 'EthylSuccinate',
