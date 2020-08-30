@@ -199,82 +199,82 @@ get_BDO_VOC = lambda: BDO_tea.VOC / 1e6 # million USD / yr
 get_BDO_FCI = lambda: BDO_tea.FCI / 1e6 # million USD
 
 
-steps = 60
+steps = 80
 
 
-def rel_impact_fn(steps):
-    rel_impact_yield_titer = None
-    lower_bound = 1/10
-    upper_bound = 10
-    middle = 1
-    rel_impact_titer_yield = None
-    max_theoretical_yield = 1
-    max_theoretical_titer = 300
-    d_MPSP_d_yield, d_MPSP_d_titer = None, None
+# def rel_impact_fn(steps):
+#     rel_impact_yield_titer = None
+#     lower_bound = 1/10
+#     upper_bound = 10
+#     middle = 1
+#     rel_impact_titer_yield = None
+#     max_theoretical_yield = 1
+#     max_theoretical_titer = 300
+#     d_MPSP_d_yield, d_MPSP_d_titer = None, None
     
-    fermentor = spec.reactor
-    curr_MPSP = BDO_tea.solve_price(product) * 907.185
-    curr_yield = fermentor.glucose_to_BDO_rxn.X
-    curr_titer = fermentor.outs[0].imass['BDO']/fermentor.outs[0].F_vol
+#     fermentor = spec.reactor
+#     curr_MPSP = BDO_tea.solve_price(product) * 907.185
+#     curr_yield = fermentor.glucose_to_BDO_rxn.X
+#     curr_titer = fermentor.outs[0].imass['BDO']/fermentor.outs[0].F_vol
     
-    multi_for_yield = 1
-    # d_yield = multi_for_yield * rel_step * max_theoretical_yield
+#     multi_for_yield = 1
+#     # d_yield = multi_for_yield * rel_step * max_theoretical_yield
     
-    multi_for_titer = 1
-    # d_titer = multi_for_titer * rel_step * max_theoretical_titer
+#     multi_for_titer = 1
+#     # d_titer = multi_for_titer * rel_step * max_theoretical_titer
     
-    d_yield, d_titer = (0.99-0.30)/steps, (210-70)/steps
-    next_yield = curr_yield + d_yield
-    next_titer = curr_titer + d_titer
+#     d_yield, d_titer = (0.99-0.30)/steps, (210-70)/steps
+#     next_yield = curr_yield + d_yield
+#     next_titer = curr_titer + d_titer
     
-    # if (next_yield, next_titer) in TYM_dict.keys():
-    #     return 1
-    try:
-        if (curr_yield + d_yield > max_theoretical_yield - 0.01
-            and not curr_titer + d_titer > max_theoretical_titer):
-            if steps > 80:
-                rel_impact_yield_titer = upper_bound
-            else:
-                return rel_impact_fn(1.1*steps)
-        elif (curr_titer + d_titer > max_theoretical_titer
-            and not curr_yield + d_yield > max_theoretical_yield - 0.01):
-            if steps > 80:
-                rel_impact_yield_titer = lower_bound
-            else:
-                return rel_impact_fn(1.1*steps)
-        elif (curr_yield + d_yield > max_theoretical_yield - 0.01
-            and curr_titer + d_titer > max_theoretical_titer):
-            rel_impact_yield_titer = middle
-        else:
-            # d_yield = multi_for_yield * rel_step * max_theoretical_yield
-            spec.load_yield(curr_yield + d_yield)
-            BDO_sys.simulate()
-            MPSP_d_yield = BDO_tea.solve_price(product) * 907.185
-            d_MPSP_d_yield = (MPSP_d_yield - curr_MPSP) * multi_for_yield
-            spec.load_yield(curr_yield)
-            # d_titer = multi_for_titer * rel_step * max_theoretical_titer
-            spec.load_titer(curr_titer + d_titer)
-            BDO_sys.simulate()
-            MPSP_d_titer = BDO_tea.solve_price(product) * 907.185
-            d_MPSP_d_titer = (MPSP_d_titer - curr_MPSP) * multi_for_titer
+#     # if (next_yield, next_titer) in TYM_dict.keys():
+#     #     return 1
+#     try:
+#         if (curr_yield + d_yield > max_theoretical_yield - 0.01
+#             and not curr_titer + d_titer > max_theoretical_titer):
+#             if steps > 80:
+#                 rel_impact_yield_titer = upper_bound
+#             else:
+#                 return rel_impact_fn(1.1*steps)
+#         elif (curr_titer + d_titer > max_theoretical_titer
+#             and not curr_yield + d_yield > max_theoretical_yield - 0.01):
+#             if steps > 80:
+#                 rel_impact_yield_titer = lower_bound
+#             else:
+#                 return rel_impact_fn(1.1*steps)
+#         elif (curr_yield + d_yield > max_theoretical_yield - 0.01
+#             and curr_titer + d_titer > max_theoretical_titer):
+#             rel_impact_yield_titer = middle
+#         else:
+#             # d_yield = multi_for_yield * rel_step * max_theoretical_yield
+#             spec.load_yield(curr_yield + d_yield)
+#             BDO_sys.simulate()
+#             MPSP_d_yield = BDO_tea.solve_price(product) * 907.185
+#             d_MPSP_d_yield = (MPSP_d_yield - curr_MPSP) * multi_for_yield
+#             spec.load_yield(curr_yield)
+#             # d_titer = multi_for_titer * rel_step * max_theoretical_titer
+#             spec.load_titer(curr_titer + d_titer)
+#             BDO_sys.simulate()
+#             MPSP_d_titer = BDO_tea.solve_price(product) * 907.185
+#             d_MPSP_d_titer = (MPSP_d_titer - curr_MPSP) * multi_for_titer
             
-            rel_impact_yield_titer = d_MPSP_d_yield / d_MPSP_d_titer
-            rel_impact_titer_yield = 1/rel_impact_yield_titer
-            spec.load_titer(curr_titer)
-    except ValueError: # inadequate yield for given titer
-        rel_impact_titer_yield = lower_bound
-    if (rel_impact_titer_yield == None or rel_impact_titer_yield == np.nan
-        or rel_impact_titer_yield<0):
-        return rel_impact_fn(1.1*steps)
-    print(curr_yield, curr_titer, d_MPSP_d_yield, d_MPSP_d_titer, rel_impact_titer_yield)
-    # return 1 + log(rel_impact_yield_titer, 10)
-    return rel_impact_titer_yield
+#             rel_impact_yield_titer = d_MPSP_d_yield / d_MPSP_d_titer
+#             rel_impact_titer_yield = 1/rel_impact_yield_titer
+#             spec.load_titer(curr_titer)
+#     except ValueError: # inadequate yield for given titer
+#         rel_impact_titer_yield = lower_bound
+#     if (rel_impact_titer_yield == None or rel_impact_titer_yield == np.nan
+#         or rel_impact_titer_yield<0):
+#         return rel_impact_fn(1.1*steps)
+#     print(curr_yield, curr_titer, d_MPSP_d_yield, d_MPSP_d_titer, rel_impact_titer_yield)
+#     # return 1 + log(rel_impact_yield_titer, 10)
+#     return rel_impact_titer_yield
 
 get_BDO_sugars_conc = lambda: sum(R302.outs[0].imass['Glucose', 'Xylose'])/R302.outs[0].F_vol
 
 get_BDO_inhibitors_conc = lambda: 1000*sum(R302.outs[0].imass['AceticAcid', 'Furfural', 'HMF'])/R302.outs[0].F_vol
 
-get_rel_impact_t_y = lambda: rel_impact_fn(steps)
+# get_rel_impact_t_y = lambda: rel_impact_fn(steps)
 
 BDO_metrics = [get_BDO_MPSP, get_BDO_sugars_conc, get_BDO_inhibitors_conc]
 
@@ -282,16 +282,16 @@ BDO_metrics = [get_BDO_MPSP, get_BDO_sugars_conc, get_BDO_inhibitors_conc]
 # %% Generate 3-specification meshgrid and set specification loading functions
 
 # Yield, titer, productivity (rate)
-spec_1 = np.linspace(0.30, 0.99, steps) # yield
-spec_2 = np.linspace(70, 210, steps) # titer
+spec_1 = np.linspace(0.15, 0.99, steps) # yield
+spec_2 = np.linspace(31.5, 210, steps) # titer
 spec_3 = np.array([1]) # productivity
 spec.load_spec_1 = spec.load_yield
 spec.load_spec_2 = spec.load_titer
 spec.load_spec_3 = spec.load_productivity
 xlabel = "Yield"
 ylabel = 'Titer [$\mathrm{g} \cdot \mathrm{L}^{-1}$]'
-xticks = [.30, .40, .50, .60, .70, .80, .90, 1.]
-yticks = [70, 105, 140, 175, 210]
+xticks = [0., 0.1, 0.2, .30, .40, .50, .60, .70, .80, .90, 1.]
+yticks = [0., 35., 70, 105, 140, 175, 210]
 spec_3_units = "$\mathrm{g} \cdot \mathrm{L}^{-1} \cdot \mathrm{hr}^{-1}$"
 
 # # Yield, titer, productivity (rate)
@@ -599,13 +599,15 @@ spec_2_r = np.round(spec_2, 4)
 #     return metric[y][x]
 
 
-def rel_impact_fn_fast(x, y, next_x, next_y, metric, Z_coord = 0):
+def rel_impact_fn_fast(x, y, step_size, metric, Z_coord = 0):
     lower_bound = 1/10
     upper_bound = 10
     middle = 1
     rel_impact_titer_yield = None
     max_x = len(Xs) - 1
     max_y = len(Ys) - 1
+    next_x= x + step_size
+    next_y = y + step_size
     d_MPSP_d_yield, d_MPSP_d_titer = None, None
     if metric[y][x][Z_coord] == np.nan:
         rel_impact_titer_yield = np.nan
@@ -623,7 +625,7 @@ def rel_impact_fn_fast(x, y, next_x, next_y, metric, Z_coord = 0):
         d_MPSP_d_titer = metric[next_y][x][Z_coord] - curr_MPSP
         rel_impact_titer_yield = d_MPSP_d_titer/d_MPSP_d_yield
     if rel_impact_titer_yield < 0:
-        return rel_impact_fn_fast(x, y, next_x+1, next_y+1, metric)
+        return rel_impact_fn_fast(x, y, step_size+1, metric)
     print(x, y, next_x, next_y,'\n', d_MPSP_d_yield, d_MPSP_d_titer, rel_impact_titer_yield)
     # return 1 + log(rel_impact_yield_titer, 10)
     return rel_impact_titer_yield
@@ -637,7 +639,7 @@ def get_all_rel_imp_fast(Xs=Xs, Ys=Ys, metric=d1_Metric1, step_size = 5):
     for x in range(len(Xs)):
         for y in range(len(Ys)):
             next_x, next_y = x + step_size, y + step_size
-            all_rel_imp[y][x] = rel_impact_fn_fast(x, y, next_x, next_y, metric)
+            all_rel_imp[y][x] = rel_impact_fn_fast(x, y, step_size, metric)
     return all_rel_imp
             
 
@@ -652,6 +654,8 @@ arr1 = np.where(arr1==1e4, 10, arr1)
 X, Y, Z = spec_1, spec_2, arr1
 levels3 = list(np.linspace(1/20, 1-(1-1/20)/38, 38)) + [1.] + list(np.linspace(1+ (20-1)/38, 20, 38))
 plt.sca(ax[0])
+
+
 style_plot_limits(xticks, yticks)
 pcm = plt.contourf(X, Y, Z, levels=levels3,
                    norm=mcolors.DivergingNorm(vmin=1/10., vcenter=1., vmax=10),
