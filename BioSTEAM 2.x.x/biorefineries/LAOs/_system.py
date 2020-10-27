@@ -18,7 +18,7 @@ from biorefineries.fattyalcohols import create_fattyalcohol_production_sys
 from thermosteam.reaction import (Reaction as Rxn,
                                   ParallelReaction as ParallelRxn,
 )
-
+# LAOs_units = LAOs.units
 __all__ = ('create_system',)
 
 # %% Reactions

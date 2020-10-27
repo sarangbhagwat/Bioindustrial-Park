@@ -68,9 +68,6 @@ samples = samples_1d[:, np.newaxis]
 model.load_samples(samples)
 
 carb_contents = np.arange(0.25, 0.701, 0.01)
-# 0.59 is the baseline
-carb_contents = [0.59] + carb_contents.tolist()
-
 data = model.evaluate_across_coordinate(
     'Carbohydate content', set_carbs, carb_contents, notify=True)
 
@@ -80,21 +77,21 @@ results = pd.DataFrame({
 for i in data.keys():
     results[i] = data[i][0]
 
-'''Organize TEA data for easy plotting'''
+'''Organize data for easy plotting'''
 TEA_x = [i for i in carb_contents]
 TEA_x *= len(prices)
 TEA_y = sum(([i]*len(carb_contents) for i in prices), [])
 
 MPSPs = [[], []]
 GWPs = [[], []]
-freshwater = [[], []]
+FECs = [[], []]
 for i in range(results.columns.shape[0]):
     if 'MPSP' in results.columns[i][1]:
         MPSPs[0] +=  results[results.columns[i]].to_list()
     if 'GWP' in results.columns[i][1]:
         GWPs[0] +=  results[results.columns[i]].to_list()
-    if 'Freshwater' in results.columns[i][1]:
-        freshwater[0] +=  results[results.columns[i]].to_list()
+    if 'FEC' in results.columns[i][1]:
+        FECs[0] +=  results[results.columns[i]].to_list()
 
 TEA_plot_data = pd.DataFrame({
     'Carbohydrate content [dw%]': TEA_x,
@@ -105,7 +102,7 @@ TEA_plot_data = pd.DataFrame({
 LCA_plot_data = pd.DataFrame({
     'Carbohydrate content [dw%]': carb_contents,    
     'GWP [kg CO2-eq/kg]': GWPs[0],
-    'Freshwater [kg H2O/kg]': freshwater[0]
+    'FEC [MJ/kg]': FECs[0]
     })
 
 '''Output to Excel'''

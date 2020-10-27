@@ -15,7 +15,7 @@ def evaluate_across_specs(spec, system,
     try:
         spec.load_specifications(spec_1=spec_1, spec_2=spec_2)
         system.simulate()
-    except ValueError: # (ValueError, RuntimeError)
+    except (ValueError, RuntimeError): # (ValueError, RuntimeError) (ValueError, AssertionError)
         return np.nan*np.ones([len(metrics), len(spec_3)])
     return spec.evaluate_across_productivity(metrics, spec_3)
     
@@ -37,7 +37,9 @@ class ProcessSpecification(bst.process_tools.ReactorSpecification):
                  'spec_3',
                  'path',
                  'evaporator',
+                 'evaporator_pump',
                  'mixer',
+                 'substrates',
                  'xylose_utilization_fraction',
                  'load_spec_1',
                  'load_spec_2',
@@ -48,11 +50,13 @@ class ProcessSpecification(bst.process_tools.ReactorSpecification):
     
     def __init__(self, evaporator, mixer, reactor, reaction_name, substrates, products,
                  spec_1, spec_2, spec_3, path, xylose_utilization_fraction,
-                 feedstock, dehydration_reactor, byproduct_streams):
+                 feedstock, dehydration_reactor, byproduct_streams, evaporator_pump = None):
                  # load_spec_1, load_spec_2, load_spec_3):
         self.evaporator = evaporator
+        self.evaporator_pump = evaporator_pump
         self.mixer = mixer
         self.path = path
+        self.substrates = substrates
         self.reactor = reactor #: [Unit] Reactor unit operation
         self.products = products #: tuple[str] Names of main products
         self.spec_1 = spec_1 #: [float] g products / L effluent
@@ -248,12 +252,13 @@ class ProcessSpecification(bst.process_tools.ReactorSpecification):
         # if X <= 1e-12: raise bst.exceptions.InfeasibleRegion('vapor fraction')
         mixer = self.mixer
         # evaporator = self.evaporator
+        # evaporator_pump = self.evaporator_pump
         
-        
-        # evaporator.V = V
+        # evaporator.V = X
         mixer.water_multiplier = X
-        mixer.specification()
         # evaporator._run()
+        # evaporator_pump._run()
+        mixer.specification()
         for i in self.path: (i.specification or i._run)()
         return self.calculate_titer() - self.spec_2
     
@@ -282,11 +287,19 @@ class ProcessSpecification(bst.process_tools.ReactorSpecification):
         #     flx.aitken_secant(f, 0.5, ytol=1e-5)
         # except:
         flx.IQ_interpolation(f, 1.0001, 30.0001, ytol=1e-3, maxiter=100)
+
+        # flx.IQ_interpolation(f, 0.3, 0.99, ytol=1e-3, maxiter=100)
+        if self.get_substrates_conc(self.evaporator.outs[0]) > 599:
+            raise ValueError
         self.reactor.tau_cofermentation = titer / self.spec_3
         
     def load_feedstock_price(self, price):
         self.feedstock.price = price / _kg_per_ton * 0.8 # price per dry ton --> price per wet kg
         self.spec_3 = price
+        
+    def get_substrates_conc(self, stream):
+        substrates = self.substrates
+        return sum(stream.imass[substrates])/stream.F_vol
     
     def load_dehydration_conversion(self, conversion):
         dr = self.dehydration_reactor

@@ -31,6 +31,7 @@ References:
     
 Naming conventions:
     D = Distillation column
+    E = Evaporator
     F = Flash tank
     H = Heat exchange
     M = Mixer
@@ -61,20 +62,21 @@ from flexsolve import aitken_secant, IQ_interpolation
 from biosteam import System
 from biosteam.process_tools import UnitGroup
 from thermosteam import Stream
-from lactic import units, facilities
-from lactic.process_settings import price, GWP_CF_stream, GWP_CF_electricity, \
-    GWP_CF_feedstock, CEDf_CF_stream, CEDf_CF_electricity
-from lactic.utils import baseline_feedflow, set_yield, find_split, splits_df
-from lactic.chemicals import chems, chemical_groups, soluble_organics, combustibles
-from lactic.tea_lca import LacticTEA
+from lactic import _units as units
+from lactic import _facilities as facilities
+# from lactic.hx_network import HX_Network
+from lactic._process_settings import price, CFs
+from lactic._utils import baseline_feedflow, set_yield, find_split, splits_df
+from lactic._chemicals import chems, chemical_groups, soluble_organics, combustibles
+from lactic._tea_lca import LacticTEA
 
 flowsheet = bst.Flowsheet('lactic')
 bst.main_flowsheet.set_flowsheet(flowsheet)
 bst.CE = 541.7 # year 2016
-
+bst.speed_up()
 # Set default thermo object for the system
 tmo.settings.set_thermo(chems)
-bst.speed_up()
+
 # These settings are sufficient to get baseline lactic acid price within $0.002/kg
 # of the final stabilized results
 System.converge_method = 'fixed-point' # aitken isn't stable
@@ -91,7 +93,9 @@ System.molar_tolerance = 0.02
 feedstock = Stream('feedstock', baseline_feedflow.copy(),
                     units='kg/hr', price=price['Feedstock'])
 
-U101 = units.FeedstockPreprocessing('U101', ins=feedstock)
+U101 = units.FeedstockPreprocessing('U101', ins=feedstock,
+                                    outs=('processed', 'diverted_to_CHP'),
+                                    diversion_to_CHP=0)
 # Handling costs/utilities included in feedstock cost thus not considered here
 U101.cost_items['System'].cost = 0
 U101.cost_items['System'].kW = 0
@@ -129,7 +133,8 @@ water_M205 = Stream('water_M205', units='kg/hr')
 # =============================================================================
 
 # Prepare sulfuric acid
-get_feedstock_dry_mass = lambda: feedstock.F_mass - feedstock.imass['H2O']
+get_feedstock_dry_mass = lambda: \
+    (feedstock.F_mass-feedstock.imass['H2O'])*(1-U101.diversion_to_CHP)
 T201 = units.SulfuricAcidAdditionTank('T201', ins=sulfuric_acid_T201,
                                       feedstock_dry_mass=get_feedstock_dry_mass())
 
@@ -216,11 +221,9 @@ def titer_at_yield(lactic_yield):
     return R301.effluent_titer-R301.titer_limit
 
 def adjust_titer_yield():
+    set_yield(R301.yield_limit, R301, R302)
+    seed_recycle._run()
     if R301.set_titer_limit:
-        R301.cofermentation_rxns.X[0] = R301.cofermentation_rxns.X[3] = R301.yield_limit
-        R302.cofermentation_rxns.X[0] = R302.cofermentation_rxns.X[3] = \
-            R301.yield_limit*R302.ferm_ratio
-        seed_recycle._run()
         if R301.effluent_titer > R301.titer_limit:
             lactic_yield = IQ_interpolation(
                 f=titer_at_yield, x0=0, x1=R301.yield_limit,
@@ -228,6 +231,7 @@ def adjust_titer_yield():
                 args=(), checkbounds=False)
             set_yield(lactic_yield, R301, R302)
             seed_recycle._run()
+
 PS301 = bst.units.ProcessSpecification('PS301', ins=R301-0,
                                         specification=adjust_titer_yield)
 
@@ -273,7 +277,7 @@ S401 = units.CellMassFilter('S401', ins=PS301-0, outs=('cell_mass', ''),
 # Ca(LA)2 + H2SO4 --> CaSO4 + 2 LA
 R401 = units.AcidulationReactor('R401', ins=(S401-1, sulfuric_acid_R401),
                                 P=101325, tau=1, V_wf=0.8, length_to_diameter=2,
-                                kW_per_m3=0.985, wall_thickness_factor=1.5,
+                                kW_per_m3=0.0985, wall_thickness_factor=1.5,
                                 vessel_material='Stainless steel 316',
                                 vessel_type='Vertical')
 R401_P = bst.units.Pump('R401_P', ins=R401-0)
@@ -290,16 +294,24 @@ S402 = units.GypsumFilter('S402', ins=R401_P-0,
                                            chemical_groups),
                           outs=(gypsum, ''))
 
+# To avoid flash temperature lower than inlet temperature
+def adjust_F401_T():
+    S402._run()
+    if S402.ins[0].T > F401.T:
+        F401.T = F401.ins[0].T
+    else: F401.T = 379
+S402.specification = adjust_F401_T
+
 # Separate out the majority of water
 F401 = bst.units.Flash('F401', ins=S402-1, outs=('F401_g', 'F401_l'), T=379, P=101325,
                        vessel_material='Stainless steel 316')
-# To avoid flash temperature lower than inlet temperature
-def adjust_F401_T():
-    if F401.ins[0].T > F401.T:
-        F401.T = F401.ins[0].T
-    else: F401.T = 379
-    F401._run()
-F401.specification = adjust_F401_T
+
+# def adjust_F401_T():
+#     if F401.ins[0].T > F401.T:
+#         F401.T = F401.ins[0].T
+#     else: F401.T = 379
+#     F401._run()
+# F401.specification = adjust_F401_T
 
 # Condense waste vapor for recycling
 F401_H = bst.units.HXutility('F401_H', ins=F401-0, V=0, rigorous=True)
@@ -326,7 +338,7 @@ D401_P = bst.units.Pump('D401_P', ins=D401-1)
 R402 = units.Esterification('R402', ins=(D401_P-0, '', 'D403_l_recycled', 
                                          ethanol_R402, ''),
                             V_wf=0.8, length_to_diameter=2,
-                            kW_per_m3=0.985, wall_thickness_factor=1,
+                            kW_per_m3=1.97, wall_thickness_factor=1,
                             vessel_material='Stainless steel 316',
                             vessel_type='Vertical')
 # Increase pressure as the solution can be very thick for some designs
@@ -383,7 +395,7 @@ acid_ester_recycle = System('acid_ester_recycle',
 # R403.outs[1] is the discarded fraction of R403.ins[2]
 R403 = units.HydrolysisReactor('R403', ins=(D403_H-0, water_R403, F401_H-0, ''),
                                tau=4, V_wf=0.8, length_to_diameter=2,
-                               kW_per_m3=0.985, wall_thickness_factor=1,
+                               kW_per_m3=0.0985, wall_thickness_factor=1,
                                vessel_material='Stainless steel 316',
                                vessel_type='Vertical')
 R403_P = bst.units.Pump('R403_P', ins=R403-0)
@@ -472,7 +484,8 @@ R501 = units.AnaerobicDigestion('R501', ins=M501-0,
                                 T=35+273.15)
 
 # Feedstock flow rate in dry U.S. ton per day
-get_flow_tpd = lambda: (feedstock.F_mass-feedstock.imass['H2O'])*24/907.185
+get_flow_tpd = lambda: \
+    (feedstock.F_mass-feedstock.imass['H2O'])*24/907.185*(1-U101.diversion_to_CHP)
 R502 = units.AerobicDigestion('R502', ins=(R501-1, '', caustic_R502, 'ammonia_R601',
                                            polymer_R502, air_R502),
                               outs=(vent_R502, 'aerobic_treated_water'),
@@ -600,7 +613,7 @@ T606_P = units.SpecialPump('T606_P', ins=T606-0, outs=ethanol_R402)
 T607 = units.FireWaterStorage('T607', ins=firewater_in, outs='firewater_out')
 
 # Mix solid wastes to CHP
-M601 = bst.units.Mixer('M601', ins=(S401-0, S504-1), outs='wastes_to_CHP')
+M601 = bst.units.Mixer('M601', ins=(U101-1, S401-0, S504-1), outs='solids_to_CHP')
 
 # Blowdown is discharged
 CHP = facilities.CHP('CHP', ins=(M601-0, R501-0, lime_CHP, ammonia_CHP,
@@ -633,7 +646,9 @@ ADP = facilities.ADP('ADP', ins=plant_air_in, outs='plant_air_out',
 CIP = facilities.CIP('CIP', ins=CIP_chems_in, outs='CIP_chems_out')
 
 # Heat exchange network
-HXN = bst.facilities.HeatExchangerNetwork('HXN')
+HXN = bst.units.HeatExchangerNetwork('HXN')
+from lactic.hx_network import HX_Network
+# HXN = HX_Network('HXN')
 
 HXN_group = UnitGroup('HXN_group', units=(HXN,))
 process_groups.append(HXN_group)
@@ -734,94 +749,96 @@ def simulate_get_MPSP():
 # %%
 
 # =============================================================================
-# Gate-to-gate life cycle analysis (LCA), thus excluding feedstock impacts,
-# waste disposal, and biogenic emissions
+# Life cycle analysis (LCA), waste disposal emission not included
 # =============================================================================
 
-# Global warming potential from material flows
+# 100-year global warming potential (GWP) from material flows
 LCA_streams = TEA_feeds.copy()
-LCA_streams.add(gypsum)
 LCA_stream = Stream('LCA_stream', units='kg/hr')
     
-def get_total_material_GWP():
+def get_material_GWP():
     LCA_stream.mass = sum(i.mass for i in LCA_streams)
-    material_GWP = LCA_stream.mass*GWP_CF_stream.mass
-    return material_GWP.sum()
+    chemical_GWP = LCA_stream.mass*CFs['GWP_CF_stream'].mass
+    # feedstock_GWP = feedstock.F_mass*CFs['GWP_CFs']['Corn stover']
+    return chemical_GWP.sum()/lactic_acid.F_mass
 
-# GWP from combustion of non-biogenic carbons
-get_non_bio_GWP = lambda: chems.CO2.MW * \
-    (natural_gas.get_atomic_flow('C')+ethanol.get_atomic_flow('C'))
+# GWP from onsite emission (e.g., combustion) of non-biogenic carbons
+get_onsite_GWP = lambda: (natural_gas.get_atomic_flow('C')+ethanol.get_atomic_flow('C')) \
+    * chems.CO2.MW / lactic_acid.F_mass
 
 # GWP from electricity
-get_electricity_GWP = lambda: sum(i.power_utility.rate for i in lactic_sys.units) * \
-    GWP_CF_electricity
+get_electricity_use = lambda: sum(i.power_utility.rate for i in lactic_sys.units)
+get_electricity_GWP = lambda: get_electricity_use()*CFs['GWP_CFs']['Electricity'] \
+    / lactic_acid.F_mass
 
-get_total_GWP = lambda: get_total_material_GWP()+get_non_bio_GWP()+ \
-    get_electricity_GWP()
+# CO2 fixed in lactic acid product
+get_fixed_GWP = lambda: \
+    lactic_acid.get_atomic_flow('C')*chems.CO2.MW/lactic_acid.F_mass
 
-get_functional_GWP = lambda: get_total_GWP()/lactic_acid.F_mass
+get_GWP = lambda: get_material_GWP()+get_onsite_GWP()+get_electricity_GWP()
 
-# 79 is gal ethanol per dry ton of feedstock, 84530 is ethanol HHV in BTU/gal from ref[3],
-# 0.001055 is BTU/MJ, 907.185 is kg per ton
-_MJ_per_kg = 79 * (84530*0.001055) / 907.185
-
-# Emissions associate with land-use change (LUC), -10 to 45 g CO2/MJ feedstock
-get_GWP_LUC_lower = lambda: (-10/1e3) * feedstock.F_mass*_MJ_per_kg / lactic_acid.F_mass
-get_GWP_LUC_upper = lambda: (45/1e3) * feedstock.F_mass*_MJ_per_kg / lactic_acid.F_mass
-
-# Considering GWP from feedstock supply system and plant uptake of CO2
-get_functional_GWP_with_feedstock = lambda: \
-    (get_total_GWP()+feedstock.F_mass*GWP_CF_feedstock)/lactic_acid.F_mass-1.5
-
-# Freshwater consumption
-get_functional_H2O = lambda: system_makeup_water.F_mass/lactic_acid.F_mass
-
-# Cumulative energy demand - fossil (CEDf) from materials
-def get_total_material_CEDf():
+# Fossil energy consumption (FEC) from materials
+def get_material_FEC():
     LCA_stream.mass = sum(i.mass for i in LCA_streams)
-    material_CEDf = LCA_stream.mass*CEDf_CF_stream.mass
-    return material_CEDf.sum()
+    chemical_FEC = LCA_stream.mass*CFs['FEC_CF_stream'].mass
+    # feedstock_FEC = feedstock.F_mass*CFs['FEC_CFs']['Corn stover']
+    return chemical_FEC.sum()/lactic_acid.F_mass
 
-# CEDf from electricity
-get_system_power_demand = lambda: sum(i.power_utility.rate for i in lactic_sys.units
-                                      if i.power_utility)
-get_electricity_CEDf = lambda: CEDf_CF_electricity*get_system_power_demand()/lactic_acid.F_mass
+# FEC from electricity
+get_electricity_FEC = lambda: \
+    get_electricity_use()*CFs['FEC_CFs']['Electricity']/lactic_acid.F_mass
 
-# Total CEDf
-get_functional_CEDf = lambda: get_total_material_CEDf()/lactic_acid.F_mass+get_electricity_CEDf()
+# Total FEC
+get_FEC = lambda: get_material_FEC()+get_electricity_FEC()
 
 def simulate_and_print():
-    print('\n---------- Baseline biorefinery ----------')
+    print('\n---------- Simulation Results ----------')
     print(f'MPSP is ${simulate_get_MPSP():.3f}/kg')
-    print(f'GWP is {get_functional_GWP():.3f} kg CO2-eq/kg lactic acid')
-    print(f'Freshwater consumption is {get_functional_H2O():.3f} kg H2O/kg lactic acid')
+    print(f'GWP is {get_GWP():.3f} kg CO2-eq/kg lactic acid')
+    print(f'FEC is {get_FEC():.2f} MJ/kg lactic acid')
     print('--------------------\n')
+
 
 
 # %%
 
 # =============================================================================
-# Temporary codes
+# Scenarios considering different process improvement
 # =============================================================================
 
-# System.molar_tolerance = 0.1
-# R402.X_factor = 5
-# R403.hydrolysis_rxns.X[:] = 0.95
-# lps = bst.HeatUtility.get_heating_agent('low_pressure_steam')
-# mps = bst.HeatUtility.get_heating_agent('medium_pressure_steam')
-# hps = bst.HeatUtility.get_heating_agent('high_pressure_steam')
+def simulate_fermentation_improvement():
+    R301_X = R301.cofermentation_rxns.X
+    R302_X = R302.cofermentation_rxns.X
+    R301.yield_limit = 0.95
+    R301_X[0] = R301_X[3] = 0.95
+    R301_X[1] = R301_X[4] = 0
+    R302_X[1] = R302_X[4] = 0
+    simulate_and_print()
 
-# for i in (lps, mps, hps):
-#     i.heat_transfer_efficiency = 1
+def simulate_separation_improvement():
+    R402.X_factor = 0.9/R402.esterification_rxns.X[0]
+    R403.hydrolysis_rxns.X[:] = 0.9    
+    simulate_and_print()
 
+def simulate_operating_improvement():
+    # lps = bst.HeatUtility.get_heating_agent('low_pressure_steam')
+    # mps = bst.HeatUtility.get_heating_agent('medium_pressure_steam')
+    # hps = bst.HeatUtility.get_heating_agent('high_pressure_steam')
+    # for i in (lps, mps, hps):
+    #     i.heat_transfer_efficiency = 1
+    U101.diversion_to_CHP = 0.25
+    print('\n---------- Simulation Results ----------')
+    print(f'MPSP is ${simulate_get_MPSP():.3f}/kg')
+    LCA_stream.imass['CH4'] *= 0.75
+    natural_gas.imass['CH4'] *= 0.75
+    print(f'GWP is {get_GWP():.3f} kg CO2-eq/kg lactic acid')
+    print(f'FEC is {get_FEC():.2f} MJ/kg lactic acid')
+    print('--------------------\n')    
 
-
-
-
-
-
-
-
+simulate_and_print()
+# simulate_fermentation_improvement()
+# simulate_separation_improvement()
+# simulate_operating_improvement()
 
 
 

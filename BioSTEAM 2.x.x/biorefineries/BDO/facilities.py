@@ -360,7 +360,7 @@ class BT(Facility):
         lime.imol['Lime'] = emission.imol['SO2'] * 1.2
         
         # 92% of SO2 removed by lime
-        CaSO4_mol = emission.imol['SO2'] * 0.92
+        # CaSO4_mol = emission.imol['SO2'] * 0.92
         emission.imol['SO2'] *= (1 - 0.92)
 
         # Air/O2 usage not rigorously modeled
@@ -374,8 +374,8 @@ class BT(Facility):
         emission.imol['Water'] = feed_solids.imol['Water'] + feed_gases.imol['Water']
                 
         ash.mol += boiler_chems.mol
-        ash.imol['CaSO4'] = CaSO4_mol
-        ash.imol['Lime'] += lime.F_mol - CaSO4_mol
+        # ash.imol['CaSO4'] = CaSO4_mol
+        ash.imol['Lime'] += lime.F_mol 
         
         emission.phase = 'g'
         ash.phase = 's'
