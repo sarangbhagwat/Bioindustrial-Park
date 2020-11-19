@@ -232,11 +232,13 @@ HMF.Dortmund.update(chems.Furfural.Dortmund)
 # BSA = chemical_copied('Butyl sorbate', HMF)
 
 TAL = Triaceticacidlactone = chemical_database('Triacetic acid lactone')
+TAL.copy_models_from(Furfural, ['Psat', 'Hvap']) # doesn't matter, since we never boil TAL
 SA = Sorbicacid =  chemical_database('Sorbic acid')
 KSA = Potassiumsorbate = chemical_database('Potassium sorbate')
 BSA = Butylsorbate = chemical_database('Butyl sorbate')
 HMTHP = chemical_copied('HMTHP', TAL)
 
+TAL.Hfus = Furfural.Hfus/2.18 # !!! matters for solubility; update 
 TAL.Tm = KSA.Tm = 185 + 273.15
 TAL.Tb = KSA.Tb =  239.1 + 273.15
 
@@ -350,7 +352,8 @@ chemical_groups = dict(
     SugarOligomers = ('GlucoseOligomer', 'XyloseOligomer', 'GalactoseOligomer',
                       'ArabinoseOligomer', 'MannoseOligomer'),
     OrganicSolubleSolids = ('AmmoniumAcetate', 'SolubleLignin', 'Extract', 'CSL',
-                            'Triacetic acid lactone', 'Sorbic acid', 'HMTHP',
+                            # 'Triacetic acid lactone',
+                            'Sorbic acid', 'HMTHP',
                             'Potassium sorbate', 'Butyl sorbate', 'VitaminA', 'VitaminD2'),
                             # 'LacticAcid', 'CalciumLactate', 'CalciumAcetate',
                             # 'EthylLactate', 'EthylAcetate', 'SuccinicAcid',

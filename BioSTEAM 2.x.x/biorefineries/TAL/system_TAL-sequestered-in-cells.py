@@ -483,8 +483,13 @@ S404 = bst.units.MultiStageMixerSettlers('S404', ins = (S403-0, M404-0),
         'phi' : 0.5,
         },
         N_stages = 4)
-
-
+# def S404_spec():
+#     S404._run()
+#     TAL_recovered = 0.9
+#     TAL_in = S404.ins[0].imol['TAL']
+#     S404.outs[0].imol['TAL'] = TAL_in * (1-TAL_recovered)
+#     S404.outs[1].imol['TAL'] = TAL_in * TAL_recovered
+# S404.specification = S404_spec
 S405 = units.Adsorption_and_Centrifugation('S405', ins = S404-1, outs = ('diluteTAL', 'polarcompounds'))
 
 def S405_spec():

@@ -4,6 +4,8 @@
 
 Created on Sun Aug 23 12:11:15 2020
 
+@author: sarangbhagwat
+
 Modified from the cornstover biorefinery constructed in Cortes-Peña et al., 2020,
 with modification of fermentation system for 3-Hydroxypropionic acid instead of the original ethanol
 
@@ -13,11 +15,6 @@ with modification of fermentation system for 3-Hydroxypropionic acid instead of 
     https://doi.org/10.1021/acssuschemeng.9b07040.
 
 All units are explicitly defined here for transparency and easy reference
-
-[1] Cortes-Peña et al., BioSTEAM: A Fast and Flexible Platform for the Design, 
-    Simulation, and Techno-Economic Analysis of Biorefineries under Uncertainty. 
-    ACS Sustainable Chem. Eng. 2020, 8 (8), 3302–3310. 
-    https://doi.org/10.1021/acssuschemeng.9b07040.
 
 Naming conventions:
     D = Distillation column
@@ -39,7 +36,7 @@ Processes:
     500: Wastewater treatment
     600: Facilities
 
-@author: sarangbhagwat
+
 """
 
 
@@ -268,7 +265,7 @@ R302 = units.CoFermentation('R302',
                                 ins=(M304_H_P-0, '', CSL, fermentation_lime),
                                 outs=('fermentation_effluent', 'CO2'),
                                 vessel_material = 'Stainless steel 316',
-                                neutralization = False)
+                                neutralization = True)
 
 
 # ferm_ratio is the ratio of conversion relative to the fermenter

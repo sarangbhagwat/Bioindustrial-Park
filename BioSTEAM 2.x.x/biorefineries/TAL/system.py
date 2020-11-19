@@ -362,7 +362,8 @@ def adjust_r_S402_recovery():
     splitter = r_S402
     solvent = 'Toluene'
     # solventobj = Toluene
-    recovery = 0.95
+    recovery = 0.97
+    
     instream = splitter.ins[0]
     out0 = splitter.outs[0]
     out1 = splitter.outs[1]
@@ -420,7 +421,7 @@ def adjust_r_S403_recovery():
     splitter = r_S403
     solvent = 'Heptane'
     # solventobj = Heptane
-    recovery = 0.95
+    recovery = 0.97
     instream = splitter.ins[0]
     out0 = splitter.outs[0]
     out1 = splitter.outs[1]
@@ -510,12 +511,14 @@ S406 = bst.units.SolidsCentrifuge('S406', ins=R403-0, outs=('K_sorbate', ''),
                             # moisture_content=0.50,
                             split=splits_S406,
                             solids = ['KSA'])
+# !!! splits for moisture content (negligible in feed), hexanol content 
 def S406_spec():
     S406._run()
 
-S406-1-1-M404
+
 S406.specification = S406_spec
 
+S406-1-1-M404
 
 S407 = units.Crystallization_Decantation('S407', ins = (S406-0, HCl, ''), outs = ('wet_SorbicAcid_crystals', 'KCl'))
 
@@ -533,6 +536,8 @@ R404-1-1-R403
 
 S408 = bst.units.Flash('S408', ins = S407-0, outs = ('water', 'SorbicAcid_crystals'),
                        V = 1., P = 101325)
+# !!! In vacuum
+
 
 # def S408_spec():
 #     instream = S408.ins[0]
@@ -574,7 +579,7 @@ aerobic_caustic = Stream('aerobic_caustic', units='kg/hr', T=20+273.15, P=2*1013
 # =============================================================================
 
 # Mix waste liquids for treatment
-M501 = bst.units.Mixer('M501', ins=(F301-1,r_S402-1, r_S403-1))
+M501 = bst.units.Mixer('M501', ins=(F301-1,r_S402-1, r_S403-1, S404-0))
 
 # This represents the total cost of wastewater treatment system
 WWT_cost = units.WastewaterSystemCost('WWT_cost', ins=M501-0)
@@ -1218,7 +1223,7 @@ get_electricity_FEC = lambda: \
 # Total FEC
 get_FEC = lambda: get_material_FEC()+get_electricity_FEC()
 
-get_SPED = lambda: BT.system_heating_demand*0.001/SA.F_mass
+# get_SPED = lambda: BT.system_heating_demand*0.001/SA.F_mass
 SA_LHV = 31.45 # MJ/kg SA
 
 # %% Full analysis
@@ -1228,8 +1233,8 @@ def simulate_and_print():
     print(f'MPSP is ${get_SA_MPSP():.3f}/kg')
     # print(f'GWP is {get_GWP():.3f} kg CO2-eq/kg SA')
     # print(f'FEC is {get_FEC():.2f} MJ/kg SA or {get_FEC()/SA_LHV:.2f} MJ/MJ SA')
-    print(f'SPED is {get_SPED():.2f} MJ/kg SA or {get_SPED()/SA_LHV:.2f} MJ/MJ SA')
-    print('--------------------\n')
+    # print(f'SPED is {get_SPED():.2f} MJ/kg SA or {get_SPED()/SA_LHV:.2f} MJ/MJ SA')
+    # print('--------------------\n')
 
 simulate_and_print()
 

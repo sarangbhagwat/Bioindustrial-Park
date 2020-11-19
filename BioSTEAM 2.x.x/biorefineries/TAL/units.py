@@ -1576,7 +1576,7 @@ class HydrolysisReactor(Reactor):
     mcat_frac = 0.01 # fraction of catalyst by weight in relation to the reactant (TAL)
     dehydration_rxns = ParallelRxn([
             #   Reaction definition                                       Reactant   Conversion
-            Rxn('SA + KOH -> KSA + H2O',         'SA',   0.90)
+            Rxn('SA + KOH -> KSA + H2O',         'SA',   1.) # not mentioned in Viswanathan et al. 2020
                 ])
     TAL_to_SA_rxn = dehydration_rxns[0]
     
@@ -1604,7 +1604,7 @@ class Crystallization_Decantation(Reactor):
     _BM = {**Reactor._BM}
     dehydration_rxns = ParallelRxn([
             #   Reaction definition                                       Reactant   Conversion
-            Rxn('KSA + HCl -> SA + KCl',         'KSA',   1.)
+            Rxn('KSA + HCl -> SA + KCl',         'KSA',   0.98)
                 ])
     TAL_to_SA_rxn = dehydration_rxns[0]
     
