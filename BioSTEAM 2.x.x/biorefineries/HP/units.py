@@ -850,6 +850,7 @@ class AcidulationReactor(Reactor):
     acidulation_rxns = ParallelRxn([
         #   Reaction definition                                           Reactant        Conversion
         Rxn('CalciumLactate + H2SO4 -> 2 HP + CaSO4',         'CalciumLactate',       1),
+        Rxn('CalciumAcetate + H2SO4 -> 2 AceticAcid + CaSO4',         'CalciumAcetate',       1),
         Rxn('CalciumDihydroxide + H2SO4 -> CaSO4 + 2 H2O',            'CalciumDihydroxide',   1)
             ])
             
@@ -1631,7 +1632,7 @@ class CoFermentation(Reactor):
         self.neutralization_rxns = ParallelRxn([
         #   Reaction definition                                               Reactant  Conversion
         Rxn('2 HP + CalciumDihydroxide -> CalciumLactate + 2 H2O',  'HP',   1.),
-        # Rxn('2 AceticAcid + CalciumDihydroxide -> CalciumAcetate + 2 H2O',  'AceticAcid',   1),
+        Rxn('2 AceticAcid + CalciumDihydroxide -> CalciumAcetate + 2 H2O',  'AceticAcid',   1),
         # Rxn('SuccinicAcid + CalciumDihydroxide -> CalciumSuccinate + 2H2O', 'SuccinicAcid', 1)
             ])
 
@@ -1661,8 +1662,8 @@ class CoFermentation(Reactor):
         if self.neutralization:
             self.vessel_material= 'Stainless steel 316'
             # Set feed lime mol to match rate of acids production, add 10% extra
-            lime.imol['Lime'] = (effluent.imol['HP']/2/self.neutralization_rxns.X[0]) * 1.1
-                                # +effluent.imol['AceticAcid']/2/self.neutralization_rxns.X[1] \
+            lime.imol['Lime'] = (effluent.imol['HP']/2/self.neutralization_rxns.X[0]) \
+                                + effluent.imol['AceticAcid']/2/self.neutralization_rxns.X[1] * 1.1
                                 # +effluent.imol['SuccinicAcid']/self.neutralization_rxns.X[2]) \
                                 # * 1.1
             effluent.imol['Lime'] = lime.imol['Lime']
