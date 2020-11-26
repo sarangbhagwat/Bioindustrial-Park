@@ -426,7 +426,7 @@ R402 = units.DehydrationReactor('R402', ins = (S402-1),
 #                                     vessel_material = 'Stainless steel 316')
 
 D401 = bst.units.ShortcutColumn('D401', ins=R402-0, outs=('D401_g', 'D401_l'),
-                                    LHK=('H2O', 'AcrylicAcid'),
+                                    LHK=('AceticAcid', 'AcrylicAcid'),
                                     is_divided=True,
                                     product_specification_format='Recovery',
                                     Lr=0.9999, Hr=0.9999, k=1.2,
