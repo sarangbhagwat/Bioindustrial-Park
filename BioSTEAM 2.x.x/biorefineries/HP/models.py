@@ -28,7 +28,7 @@ import biosteam as bst
 from chaospy import distributions as shape
 from biosteam import main_flowsheet as find
 from biosteam.evaluation import Model, Metric
-from biosteam.evaluation.evaluation_tools import Setter
+from biosteam.evaluation.evaluation_tools.parameter import Setter
 from HP.system import HP_sub_sys, HP_tea, HP_no_BT_tea
 
 get_annual_factor = lambda: HP_no_BT_tea._annual_factor

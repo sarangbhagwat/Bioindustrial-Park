@@ -1610,9 +1610,11 @@ class CoFermentation(Reactor):
         # FermMicrobe reaction from Table 14 on Page 31 of Humbird et al.
         self.cofermentation_rxns = ParallelRxn([
         #      Reaction definition            Reactant    Conversion
-        Rxn('Glucose -> 2HP + CO2 + H2O',        'Glucose',   .53),
+        Rxn('Glucose -> 2HP',        'Glucose',   .53),
+        Rxn('Glucose -> 3 AceticAcid',        'Glucose',   0.07),
         Rxn('Glucose -> 6 FermMicrobe',       'Glucose',   0.03),
-        Rxn('Xylose -> 2HP + CO2 + H2O',       'Xylose',    0.53*0.8),
+        Rxn('3Xylose -> 5HP',       'Xylose',    0.53*0.8),
+        Rxn('2 Xylose -> 5 AceticAcid',       'Xylose',    0.07),
         Rxn('Xylose -> 5 FermMicrobe',        'Xylose',    0.03*0.8),
         ])
         

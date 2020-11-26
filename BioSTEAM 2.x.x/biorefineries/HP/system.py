@@ -264,8 +264,8 @@ M304_H_P = units.HPPump('M304_H_P', ins=M304_H-0)
 R302 = units.CoFermentation('R302', 
                                 ins=(M304_H_P-0, '', CSL, fermentation_lime),
                                 outs=('fermentation_effluent', 'CO2'),
-                                vessel_material = 'Stainless steel 316',
-                                neutralization = True)
+                                vessel_material='Stainless steel 316',
+                                neutralization=True)
 
 
 # ferm_ratio is the ratio of conversion relative to the fermenter
@@ -281,6 +281,8 @@ T301 = units.SeedHoldTank('T301', ins=R303-0, outs=1-M302)
 # =============================================================================
 
 separation_sulfuric_acid = Stream('separation_sulfuric_acid', units='kg/hr')
+
+gypsum = Stream('gypsum', units='kg/hr', price=price['Gypsum'])
 
 # # # To be mixed with sulfuric acid, will be updated in SulfuricAdditionTank
 # # separation_acid_water = Stream('separation_acid_water', units='kg/hr')
@@ -300,15 +302,13 @@ separation_sulfuric_acid = Stream('separation_sulfuric_acid', units='kg/hr')
 # Separation units
 # =============================================================================
 
-R401 = units.AcidulationReactor('R401', ins = (R302-0, separation_sulfuric_acid),
-                                outs = ('acidulated_broth'),
-                                vessel_material='Stainless steel 316')
+
                                 
 # Remove solids from fermentation broth, modified from the pressure filter in Humbird et al.
 S401_index = [splits_df.index[0]] + splits_df.index[2:].to_list()
 S401_cell_mass_split = [splits_df['stream_571'][0]] + splits_df['stream_571'][2:].to_list()
 S401_filtrate_split = [splits_df['stream_535'][0]] + splits_df['stream_535'][2:].to_list()
-S401 = bst.units.SolidsCentrifuge('S401', ins=R401-0, outs=('cell_mass', ''),
+S401 = bst.units.SolidsCentrifuge('S401', ins=R302-0, outs=('cell_mass', ''),
                             # moisture_content=0.50,
                             split=find_split(S401_index,
                                               S401_cell_mass_split,
@@ -316,6 +316,22 @@ S401 = bst.units.SolidsCentrifuge('S401', ins=R401-0, outs=('cell_mass', ''),
                                               chemical_groups), solids =\
                                 ['Xylan', 'Glucan', 'Lignin', 'FermMicrobe',\
                                  'Ash', 'Arabinan', 'Galactan', 'Mannan'])
+
+R401 = units.AcidulationReactor('R401', ins = (S401-1, separation_sulfuric_acid),
+                                outs = ('acidulated_broth'),
+                                vessel_material='Stainless steel 316')
+R401_P = bst.units.Pump('R401_P', ins=R401-0)
+
+S402_index = S401_index + ['Gypsum']
+S402_gypsum_split = S401_cell_mass_split + [0.995]
+S402_filtrate_split = S401_filtrate_split + [0.005]
+S402 = units.GypsumFilter('S402', ins=R401_P-0,
+                          moisture_content=0.2,
+                          split=find_split(S402_index,
+                                           S402_gypsum_split,
+                                           S402_filtrate_split,
+                                           chemical_groups),
+                          outs=(gypsum, ''))
 
 # M401 = bst.units.Mixer('M401', ins=(S401-1, '', '', '', ''))
 
@@ -388,7 +404,7 @@ S401 = bst.units.SolidsCentrifuge('S401', ins=R401-0, outs=('cell_mass', ''),
 # S402.specification = adjust_S402_split
 
 
-R402 = units.DehydrationReactor('R402', ins = (S401-1),
+R402 = units.DehydrationReactor('R402', ins = (S402-1),
                                 outs = ('dilute_acryclic_acid'),
                                 tau = 57.34/1.5, # Dishisha et al.
                                 T = 230 + 273.15,
@@ -857,10 +873,12 @@ System.molar_tolerance = 0.1
 #         HP.price = HP_tea.solve_price(HP, HP_no_BT_tea)
 #     return HP.price
 
+num_sims = 5
+num_solve_tea = 3
 def get_AA_MPSP():
-    HP_sys.simulate()
-    
-    for i in range(3):
+    for i in range(num_sims):
+        HP_sys.simulate()
+    for i in range(num_solve_tea):
         AA.price = HP_tea.solve_price(AA, HP_no_BT_tea)
     return AA.price
 
