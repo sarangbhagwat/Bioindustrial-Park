@@ -332,7 +332,14 @@ S402 = units.GypsumFilter('S402', ins=R401_P-0,
                                            S402_filtrate_split,
                                            chemical_groups),
                           outs=(gypsum, ''))
+def S402_spec():
+    if S402.ins[0].imol['CaSO4']>0:
+        S402._run()
+    else:
+        S402.outs[0].mol[:] = 0
+        S402.outs[1].mol = S402.ins[0].mol
 
+S402.specification = S402_spec
 # M401 = bst.units.Mixer('M401', ins=(S401-1, '', '', '', ''))
 
 # def adjust_M401_TOA_and_AQ336():
@@ -457,11 +464,11 @@ F401 = bst.units.Flash('F401', ins=D401_P-0, outs=('F401_g', 'F401_l'),
 F401_H = bst.units.HXutility('F401_H', ins=F401-0, V=0, rigorous=True)
 F401_P = units.HPPump('F401_P', ins=F401-1)
 
-S402 = bst.units.Splitter('S402', ins=F401_P-0, outs=('to_fermentor', 
+S403 = bst.units.Splitter('S402', ins=F401_P-0, outs=('to_fermentor', 
                                                     'to_M501'),
                           split=0.96)
 
-S402-0-1-R302
+S403-0-1-R302
 # D401 = bst.units.ShortcutColumn('D401', ins=F403_P-0,
 #                                     outs=('D401_g', 'D401_l'),
 #                                     LHK=('Ethanol', 'HP'),
@@ -494,7 +501,7 @@ aerobic_caustic = Stream('aerobic_caustic', units='kg/hr', T=20+273.15, P=2*1013
 # =============================================================================
 
 # Mix waste liquids for treatment
-M501 = bst.units.Mixer('M501', ins=(F301_P-0, D401_H-0, M204-0))
+M501 = bst.units.Mixer('M501', ins=(F301_P-0, D401_H-0, S403-1))
 
 # This represents the total cost of wastewater treatment system
 WWT_cost = units.WastewaterSystemCost('WWT_cost', ins=M501-0)
