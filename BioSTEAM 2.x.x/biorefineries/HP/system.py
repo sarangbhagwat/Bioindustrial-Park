@@ -58,6 +58,8 @@ from HP.chemicals_data import HP_chemicals, chemical_groups, \
                                 soluble_organics, combustibles
 from HP.tea import HPTEA
 from biosteam.process_tools import UnitGroup
+
+import matplotlib.pyplot as plt
 # from lactic.hx_network import HX_Network
 
 # # Do this to be able to show more streams in a diagram
@@ -924,6 +926,88 @@ def calculate_MPSP(V):
     MPSP = AA.price = HP_tea.solve_price(AA, HP_no_BT_tea)
     return MPSP
 
+fermentation_broth = R302.outs[0]
+
+get_titer = lambda: ((fermentation_broth.imass['HP'] + fermentation_broth.imol['CalciumLactate']*2*HP_chemicals.HP.MW)/fermentation_broth.F_vol)
+
+
+def set_titer(titer):
+    curr_titer = get_titer()
+    M304.water_multiplier *= curr_titer/titer
+    get_AA_MPSP()
+    
+# Unit groups
+
+pretreatment_and_fermentation = UnitGroup('Pretreatment and Fermentation', 
+                                          units = [i for i in HP_sys.units if i.ID[1]=='3'])
+
+separation = UnitGroup('Separation', 
+                                          units = [i for i in HP_sys.units if i.ID[1]=='4'])
+
+waste_treatment = UnitGroup('Waste treatment', 
+                                          units = [i for i in HP_sys.units if i.ID[1]=='5'])
+
+product_storage_and_pumping = UnitGroup('Product storage and pumping', 
+                                          units = [i for i in HP_sys.units if i.ID[1]=='6'])
+
+unit_groups = [pretreatment_and_fermentation, separation, waste_treatment,
+               product_storage_and_pumping]
+
+
+titers_to_plot = np.linspace(10, 300, 30)
+
+
+def plot_heating_duty_contributions_across_titers(titers):
+    contributions = list(np.zeros(len(titers)))
+    for i in range(len(titers)):
+        titer = titers[i]
+        set_titer(titer)
+        contributions[i] = [ug.get_heating_duty()/AA.F_mass for ug in unit_groups]
+    
+    contributions = np.array(contributions)
+    fig, ax = plt.subplots()
+    for j in range(len(contributions[0])):
+        # print(contributions)
+        ax.plot(titers, contributions[:,j], label = unit_groups[j].name)
+    legend = ax.legend()
+    plt.show()
+    return contributions
+
+def plot_electricity_contributions_across_titers(titers):
+    contributions = list(np.zeros(len(titers)))
+    for i in range(len(titers)):
+        titer = titers[i]
+        set_titer(titer)
+        contributions[i] = [ug.get_electricity_consumption()/AA.F_mass for ug in unit_groups]
+    
+    contributions = np.array(contributions)
+    fig, ax = plt.subplots()
+    for j in range(len(contributions[0])):
+        # print(contributions)
+        ax.plot(titers, contributions[:,j], label = unit_groups[j].name)
+    legend = ax.legend()
+    plt.show()
+    return contributions
+
+def plot_installed_cost_contributions_across_titers(titers):
+    contributions = list(np.zeros(len(titers)))
+    for i in range(len(titers)):
+        titer = titers[i]
+        set_titer(titer)
+        contributions[i] = [ug.get_installed_cost()/AA.F_mass for ug in unit_groups]
+    
+    contributions = np.array(contributions)
+    fig, ax = plt.subplots()
+    for j in range(len(contributions[0])):
+        # print(contributions)
+        ax.plot(titers, contributions[:,j], label = unit_groups[j].name)
+    legend = ax.legend()
+    plt.show()
+    return contributions
+
+
+
+plot_heating_duty_contributions_across_titers(titers_to_plot)
 # vapor_fractions = np.linspace(0.20, 0.80)
 # titers = calculate_titer(vapor_fractions)
 # MPSPs = calculate_MPSP(vapor_fractions)
@@ -943,22 +1027,7 @@ def calculate_MPSP(V):
 # =============================================================================
 
 
-# Unit groups
 
-pretreatment_and_fermentation = UnitGroup('Pretreatment and Fermentation', 
-                                          units = [i for i in HP_sys.units if i.ID[1]=='3'])
-
-separation = UnitGroup('Separation', 
-                                          units = [i for i in HP_sys.units if i.ID[1]=='4'])
-
-waste_treatment = UnitGroup('Waste treatment', 
-                                          units = [i for i in HP_sys.units if i.ID[1]=='5'])
-
-product_storage_and_pumping = UnitGroup('Product storage and pumping', 
-                                          units = [i for i in HP_sys.units if i.ID[1]=='6'])
-
-unit_groups = [pretreatment_and_fermentation, separation, waste_treatment,
-               product_storage_and_pumping]
 
 
 HP_sub_sys = {
