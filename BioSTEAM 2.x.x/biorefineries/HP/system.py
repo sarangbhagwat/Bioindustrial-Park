@@ -57,7 +57,7 @@ from HP.utils import find_split, splits_df, baseline_feedflow
 from HP.chemicals_data import HP_chemicals, chemical_groups, \
                                 soluble_organics, combustibles
 from HP.tea import HPTEA
-
+from biosteam.process_tools import UnitGroup
 # from lactic.hx_network import HX_Network
 
 # # Do this to be able to show more streams in a diagram
@@ -103,7 +103,7 @@ U101.cost_items['System'].kW = 0
 # =============================================================================
 
 # For pretreatment, 93% purity
-sulfuric_acid_T201 = Stream('sulfuric_acid_T201', units='kg/hr')
+pretreatment_sulfuric_acid = Stream('pretreatment_sulfuric_acid', units='kg/hr')
 # To be mixed with sulfuric acid, flow updated in SulfuricAcidMixer
 water_M201 = Stream('water_M201', T=114+273.15, units='kg/hr')
 
@@ -125,7 +125,7 @@ water_M205 = Stream('water_M205', units='kg/hr')
 
 # Prepare sulfuric acid
 get_feedstock_dry_mass = lambda: feedstock.F_mass - feedstock.imass['H2O']
-T201 = units.SulfuricAcidAdditionTank('T201', ins=sulfuric_acid_T201,
+T201 = units.SulfuricAcidAdditionTank('T201', ins=pretreatment_sulfuric_acid,
                                       feedstock_dry_mass=get_feedstock_dry_mass())
 
 M201 = units.SulfuricAcidMixer('M201', ins=(T201-0, water_M201))
@@ -631,7 +631,7 @@ fire_water_in = Stream('fire_water_in',
 # =============================================================================
 
 T601 = units.SulfuricAcidStorageTank('T601', ins=sulfuric_acid_fresh,
-                                     outs=sulfuric_acid_T201)
+                                     outs=pretreatment_sulfuric_acid)
 T601.line = 'Sulfuric acid storage tank'
 # S601 = bst.units.ReversedSplitter('S601', ins=T601-0, 
 #                                   outs=(pretreatment_sulfuric_acid, 
@@ -730,7 +730,7 @@ PWC = facilities.PWC('PWC', ins=(system_makeup_water, S504-0),
                      outs=('process_water', 'discharged_water'))
 
 # Heat exchange network
-# HXN = bst.facilities.HeatExchangerNetwork('HXN')
+HXN = bst.facilities.HeatExchangerNetwork('HXN')
 
 
 # HXN = HX_Network('HXN')
@@ -941,6 +941,25 @@ def calculate_MPSP(V):
 # =============================================================================
 # For Monte Carlo and analyses
 # =============================================================================
+
+
+# Unit groups
+
+pretreatment_and_fermentation = UnitGroup('Pretreatment and Fermentation', 
+                                          units = [i for i in HP_sys.units if i.ID[1]=='3'])
+
+separation = UnitGroup('Separation', 
+                                          units = [i for i in HP_sys.units if i.ID[1]=='4'])
+
+waste_treatment = UnitGroup('Waste treatment', 
+                                          units = [i for i in HP_sys.units if i.ID[1]=='5'])
+
+product_storage_and_pumping = UnitGroup('Product storage and pumping', 
+                                          units = [i for i in HP_sys.units if i.ID[1]=='6'])
+
+unit_groups = [pretreatment_and_fermentation, separation, waste_treatment,
+               product_storage_and_pumping]
+
 
 HP_sub_sys = {
 #     'feedstock_sys': (U101,),

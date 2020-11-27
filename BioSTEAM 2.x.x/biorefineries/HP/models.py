@@ -29,8 +29,9 @@ from chaospy import distributions as shape
 from biosteam import main_flowsheet as find
 from biosteam.evaluation import Model, Metric
 from biosteam.evaluation.evaluation_tools.parameter import Setter
-from HP.system import HP_sub_sys, HP_tea, HP_no_BT_tea
+from HP.system import HP_sub_sys, HP_tea, HP_no_BT_tea, flowsheet, unit_groups
 
+find.set_flowsheet(flowsheet)
 get_annual_factor = lambda: HP_no_BT_tea._annual_factor
 _kg_per_ton = 907.18474
 
@@ -52,25 +53,25 @@ system_products.append(gypsum)
 # Overall biorefinery metrics
 # =============================================================================
 
-# Minimum selling price of HP stream
+# Minimum selling price of AA stream
 def get_MSP():
     for i in range(3):
-        HP.price = HP_tea.solve_price(HP,
+        AA.price = HP_tea.solve_price(HP,
                                                       HP_no_BT_tea)
-    return HP.price
+    return AA.price
 
 # Mass flow rate of HP stream
-HP = find.stream.HP
-get_yield = lambda: HP.F_mass*get_annual_factor()/1e6
-# Purity (%) of LacticAcid in the final product
-get_purity = lambda: HP.imass['LacticAcid']/HP.F_mass
+AA = find.unit.T606_P-0
+get_yield = lambda: AA.F_mass*get_annual_factor()/1e6
+# Purity (%) of HP in the final product
+get_purity = lambda: AA.imass['HP']/AA.F_mass
 # Adjust for purity
 get_adjusted_MSP = lambda: get_MSP() / get_purity()
 get_adjusted_yield = lambda: get_yield() * get_purity()
 # Recovery (%) = recovered/amount in fermentation broth
 R301 = find.unit.R301
-get_recovery = lambda: HP.imol['LacticAcid'] \
-    /(R301.outs[0].imol['LacticAcid']+2*R301.outs[0].imol['CalciumLactate'])
+get_recovery = lambda: AA.imol['HP'] \
+    /(R301.outs[0].imol['HP']+2*R301.outs[0].imol['CalciumLactate'])
 get_overall_TCI = lambda: HP_tea.TCI/1e6
 # Annual operating cost, note that AOC excludes electricity credit
 get_overall_AOC = lambda: HP_tea.AOC/1e6
@@ -129,16 +130,17 @@ fermentation_lime = find.stream.fermentation_lime
 FGD_lime = find.stream.FGD_lime
 get_fermentation_lime_ratio = lambda: fermentation_lime.imol['Lime'] \
     / (fermentation_lime.imol['Lime']+FGD_lime.imol['Lime']) 
-S601 = find.unit.S601
-get_separation_sulfuric_acid_ratio = lambda: S601.outs[1].imol['H2SO4']/S601.ins[0].imol['H2SO4']
+# S601 = find.unit.S601
+# get_separation_sulfuric_acid_ratio = lambda: S601.outs[1].imol['H2SO4']/S601.ins[0].imol['H2SO4']
+# get_separation_sulfuric_acid_ratio = 
 check_material_cost = lambda: sum(get_material_cost(feed)()
                                   for feed in system_feeds) - HP_tea.material_cost/1e6
 
 metrics.extend((
     Metric('Fermentation lime ratio', get_fermentation_lime_ratio, 
            '%', 'Material cost'),
-    Metric('Separation sulfuric acid ratio', get_separation_sulfuric_acid_ratio, 
-           '%', 'Material cost'),
+    # Metric('Separation sulfuric acid ratio', get_separation_sulfuric_acid_ratio, 
+    #        '%', 'Material cost'),
     Metric('Check', check_material_cost, '10^6 $/yr', 'Material cost')))
 
 def get_product_sale(stream):
@@ -306,7 +308,7 @@ special_price = {
     'feedstock':        ('Uniform',   (0.0529,    0.117)),
     'CSL_fresh':        ('Uniform',   (0.0673,    0.112)),
     'lime_fresh':       ('Uniform',   (0.160,     0.288)),
-    'ethanol_fresh':    ('Triangle',  (0.460,     0.978)),
+    # 'ethanol_fresh':    ('Triangle',  (0.460,     0.978)),
     'natural_gas':      ('Triangle',  (0.198,     0.304)),
     'gypsum':           ('Uniform',   (-0.0288,   0.00776))
     }
@@ -485,18 +487,18 @@ def set_R401_tau(tau):
     R401.tau = tau
 
 R402 = find.unit.R402
-D = shape.Triangle(0.95, 1, 1.05)
-@param(name='Esterification conversion factor', element=R402, kind='coupled', units='',
+D = baseline_uniform(0.95, 1.)
+@param(name='Dehydration conversion', element=R402, kind='coupled', units='',
        baseline=1, distribution=D)
-def set_R402_conversion_factor(factor):
-    R402.X_factor = factor
+def set_R402_conversion_factor(X):
+    R402.X = X
     
-R403 = find.unit.R403
-D = shape.Triangle(0.72, 0.8, 0.88)
-@param(name='Hydrolysis conversion', element=R403, kind='coupled', units='%',
-       baseline=0.8, distribution=D)
-def set_R403_conversion_factor(X):
-    R403.hydrolysis_rxns.X[:] = X
+# R403 = find.unit.R403
+# D = shape.Triangle(0.72, 0.8, 0.88)
+# @param(name='Hydrolysis conversion', element=R403, kind='coupled', units='%',
+#        baseline=0.8, distribution=D)
+# def set_R403_conversion_factor(X):
+#     R403.hydrolysis_rxns.X[:] = X
     
 
 # =============================================================================
