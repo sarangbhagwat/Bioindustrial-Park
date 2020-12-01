@@ -626,12 +626,14 @@ class SeedTrain(Unit):
         self.ferm_ratio = ferm_ratio
 
         # FermMicrobe reaction from Table 14 on Page 31 of Humbird et al.
-        self.cofermentation_rxns = ParallelRxn([
+        self.cofermentation_rxns =  ParallelRxn([
         #      Reaction definition            Reactant    Conversion
-        Rxn('Glucose -> 2HP + CO2',        'Glucose',   .53*.8), 
-        Rxn('Glucose -> 6 FermMicrobe',       'Glucose',   0.03*.8),
-        Rxn('Xylose -> 2HP + CO2',       'Xylose',    0.53*.8*.8),
-        Rxn('Xylose -> 5 FermMicrobe',        'Xylose',    0.03*.8*.8),
+        Rxn('Glucose -> 2HP',        'Glucose',   .53*ferm_ratio),
+        Rxn('Glucose -> 3 AceticAcid',        'Glucose',   0.07*ferm_ratio),
+        Rxn('Glucose -> 6 FermMicrobe',       'Glucose',   0.03*ferm_ratio),
+        Rxn('3Xylose -> 5HP',       'Xylose',    0.53*0.8*ferm_ratio),
+        Rxn('2 Xylose -> 5 AceticAcid',       'Xylose',    0.07*0.8*ferm_ratio),
+        Rxn('Xylose -> 5 FermMicrobe',        'Xylose',    0.03*0.8*ferm_ratio),
         ])
 
     def _run(self):
@@ -1477,11 +1479,11 @@ class DehydrationReactor(Reactor):
             'TiO2 catalyst': 1,
             'Heat exchangers': 3.17}
     mcat_frac = (12/1.5) * (1e3)# kg per m3/h
-    dehydration_rxns = ParallelRxn([
+    dehydration_reactions = ParallelRxn([
             #   Reaction definition                                       Reactant   Conversion
             Rxn('HP -> AA + H2O',         'HP',   0.999) # 99.9% conversion for pure HP stream, assumed theoretical maximum for dilute stream
                 ])                                      # Dishisha et al. 2015
-    HP_to_AA_rxn = dehydration_rxns[0]
+    HP_to_AA_rxn = dehydration_reactions[0]
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, *, T=230+273.15,
                   P=101325, V_wf=0.8, length_to_diameter=2, tau = 1,
@@ -1501,7 +1503,7 @@ class DehydrationReactor(Reactor):
         self.vessel_type = vessel_type
         self.heat_exchanger = HXutility(None, None, None, T=T)
         self.tau = tau
-        self.X = self.dehydration_rxns[0].X = X
+        self.X = self.dehydration_reactions[0].X = X
         
     def _run(self):
         feed = self.ins[0]
@@ -1512,7 +1514,7 @@ class DehydrationReactor(Reactor):
         effluent.T = self.T
         # effluent.P = feed.P
         
-        self.dehydration_rxns(effluent.mol)
+        self.dehydration_reactions(effluent.mol)
         
    
     def _cost(self):
@@ -1556,6 +1558,8 @@ _316_over_304 = 1.2
 class CoFermentation(Reactor):
     _N_ins = 3
     _N_outs = 2
+    _N_heat_utilities = 1
+    
     _units= {**Reactor._units,
             'Fermenter size': 'kg',
             'Recirculation flow rate': 'kg/hr',
@@ -1605,8 +1609,9 @@ class CoFermentation(Reactor):
         self.allow_dilution = allow_dilution
         self.allow_concentration = allow_concentration
         self.mixed_feed = tmo.Stream('mixed_feed')
-        self.heat_exchanger = hx = HXutility(None, None, None, T=T) 
-        self.heat_utilities = hx.heat_utilities
+        # self.heat_exchanger = hx = HXutility(None, None, None, T=T) 
+        # self.heat_utilities = hx.heat_utilities
+        self.heat_exchanger = HXutility(None, None, None, T=T)
         
         # FermMicrobe reaction from Table 14 on Page 31 of Humbird et al.
         self.cofermentation_rxns = ParallelRxn([
@@ -1615,16 +1620,18 @@ class CoFermentation(Reactor):
         Rxn('Glucose -> 3 AceticAcid',        'Glucose',   0.07),
         Rxn('Glucose -> 6 FermMicrobe',       'Glucose',   0.03),
         Rxn('3Xylose -> 5HP',       'Xylose',    0.53*0.8),
-        Rxn('2 Xylose -> 5 AceticAcid',       'Xylose',    0.07),
+        Rxn('2 Xylose -> 5 AceticAcid',       'Xylose',    0.07*0.8),
         Rxn('Xylose -> 5 FermMicrobe',        'Xylose',    0.03*0.8),
         ])
         
         self.glucose_to_HP_rxn = self.cofermentation_rxns[0]
-        self.xylose_to_HP_rxn = self.cofermentation_rxns[2]
+        self.xylose_to_HP_rxn = self.cofermentation_rxns[3]
         
+        self.glucose_to_acetic_acid_rxn = self.cofermentation_rxns[1]
+        self.xylose_to_acetic_acid_rxn = self.cofermentation_rxns[4]
         
-        self.glucose_to_microbe_rxn = self.cofermentation_rxns[1]
-        self.xylose_to_microbe_rxn = self.cofermentation_rxns[3]
+        self.glucose_to_microbe_rxn = self.cofermentation_rxns[2]
+        self.xylose_to_microbe_rxn = self.cofermentation_rxns[5]
         
         self._X = self.cofermentation_rxns.X.copy()
         

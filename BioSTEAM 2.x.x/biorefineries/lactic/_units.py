@@ -60,9 +60,9 @@ from biosteam.units.design_tools import PressureVessel
 from biosteam.units.design_tools import pressure_vessel_material_factors as factors
 from biosteam.units.decorators import cost
 from thermosteam import separations
-from lactic._process_settings import price
-from lactic._chemicals import COD_chemicals, solubles, insolubles
-from lactic._utils import CEPCI, baseline_feedflow, compute_lactic_titer, \
+from biorefineries.lactic._process_settings import price
+from biorefineries.lactic._chemicals import COD_chemicals, solubles, insolubles
+from biorefineries.lactic._utils import CEPCI, baseline_feedflow, compute_lactic_titer, \
     compute_extra_chemical, adjust_recycle, compute_COD
 
 _kg_per_ton = 907.18474
@@ -726,6 +726,8 @@ class CoFermentation(Reactor):
     _BM = {**Reactor._BM,
            'Heat exchangers': 3.17}
 
+    _N_heat_utilities = 1
+
     auxiliary_unit_names = ('heat_exchanger',)
     
     # Equals the split of saccharified slurry to seed train
@@ -768,8 +770,7 @@ class CoFermentation(Reactor):
         self.allow_dilution = allow_dilution
         self.allow_concentration = allow_concentration
         self.mixed_feed = tmo.Stream('mixed_feed')
-        self.heat_exchanger = hx = HXutility(None, None, None, T=T) 
-        self.heat_utilities = hx.heat_utilities
+        self.heat_exchanger = HXutility(None, None, None, T=T) 
         
         # FermMicrobe reaction from ref [3]
         self.cofermentation_rxns = ParallelRxn([

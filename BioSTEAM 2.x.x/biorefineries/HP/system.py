@@ -47,6 +47,7 @@ import thermosteam as tmo
 import flexsolve as flx
 import numpy as np
 from biosteam import main_flowsheet as F
+from biosteam.process_tools import BoundedNumericalSpecification
 
 from biosteam import System
 from thermosteam import Stream
@@ -239,6 +240,16 @@ F301 = bst.units.MultiEffectEvaporator('F301', ins=S301-1, outs=('F301_l', 'F301
                                         # P = (101325, 73581, 50892, 32777, 20000), V = 0.001)
 F301.V = 0.797 #for sugars concentration of 591.25 g/L (599.73 g/L after cooling to 30 C)
 
+sugars_IDs = ('Glucose', 'Xylose')
+sugars_concentration = lambda x: sum(x.imass[sugars_IDs])/x.F_vol
+fixed_sugars_concentration = 591.25
+
+    
+def F301_spec(V):
+    F301.V = V
+    F301._run()
+    return sugars_concentration(F301.outs[0]) - fixed_sugars_concentration
+F301.specification = BoundedNumericalSpecification(F301_spec, 0.2, 0.9999)
 
 F301_P = units.HPPump('F301_P', ins=F301-1)
 # F301_H = bst.units.HXutility('F301_H', ins=F301-0, V = 0.)
@@ -887,6 +898,9 @@ num_solve_tea = 3
 def get_AA_MPSP():
     for i in range(num_sims):
         HP_sys.simulate()
+    return solve_AA_price()
+
+def solve_AA_price():
     for i in range(num_solve_tea):
         AA.price = HP_tea.solve_price(AA, HP_no_BT_tea)
     return AA.price
@@ -910,7 +924,9 @@ spec = ProcessSpecification(
     feedstock = feedstock,
     dehydration_reactor = R401,
     byproduct_streams = [Acetoin, IBA],
-    evaporator_pump = F301_P)
+    evaporator_pump = F301_P,
+    feedstock_mass = feedstock.F_mass,
+    glucan_to_xylan = feedstock.imass['Glucan']/feedstock.imass['Xylan'])
 
 path = (F301, R302)
 @np.vectorize
@@ -938,7 +954,10 @@ def set_titer(titer):
     
 # Unit groups
 
-pretreatment_and_fermentation = UnitGroup('Pretreatment and Fermentation', 
+pretreatment = UnitGroup('Pretreatment', 
+                                          units = [i for i in HP_sys.units if i.ID[1]=='2'])
+
+saccharification_and_fermentation = UnitGroup('Saccharification and Fermentation', 
                                           units = [i for i in HP_sys.units if i.ID[1]=='3'])
 
 separation = UnitGroup('Separation', 
@@ -950,7 +969,7 @@ waste_treatment = UnitGroup('Waste treatment',
 product_storage_and_pumping = UnitGroup('Product storage and pumping', 
                                           units = [i for i in HP_sys.units if i.ID[1]=='6'])
 
-unit_groups = [pretreatment_and_fermentation, separation, waste_treatment,
+unit_groups = [pretreatment, saccharification_and_fermentation, separation, waste_treatment,
                product_storage_and_pumping]
 
 
@@ -967,7 +986,6 @@ def plot_heating_duty_contributions_across_titers(titers):
     contributions = np.array(contributions)
     fig, ax = plt.subplots()
     for j in range(len(contributions[0])):
-        # print(contributions)
         ax.plot(titers, contributions[:,j], label = unit_groups[j].name)
     legend = ax.legend()
     plt.show()
@@ -983,7 +1001,6 @@ def plot_electricity_contributions_across_titers(titers):
     contributions = np.array(contributions)
     fig, ax = plt.subplots()
     for j in range(len(contributions[0])):
-        # print(contributions)
         ax.plot(titers, contributions[:,j], label = unit_groups[j].name)
     legend = ax.legend()
     plt.show()
@@ -999,7 +1016,6 @@ def plot_installed_cost_contributions_across_titers(titers):
     contributions = np.array(contributions)
     fig, ax = plt.subplots()
     for j in range(len(contributions[0])):
-        # print(contributions)
         ax.plot(titers, contributions[:,j], label = unit_groups[j].name)
     legend = ax.legend()
     plt.show()
@@ -1007,7 +1023,9 @@ def plot_installed_cost_contributions_across_titers(titers):
 
 
 
-plot_heating_duty_contributions_across_titers(titers_to_plot)
+# plot_heating_duty_contributions_across_titers(titers_to_plot)
+
+
 # vapor_fractions = np.linspace(0.20, 0.80)
 # titers = calculate_titer(vapor_fractions)
 # MPSPs = calculate_MPSP(vapor_fractions)

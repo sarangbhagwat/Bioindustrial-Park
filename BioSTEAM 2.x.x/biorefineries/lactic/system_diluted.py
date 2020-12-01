@@ -62,12 +62,12 @@ from flexsolve import aitken_secant, IQ_interpolation
 from biosteam import System
 from biosteam.process_tools import UnitGroup
 from thermosteam import Stream
-from lactic import _units as units
-from lactic import _facilities as facilities
-from lactic._process_settings import price, CFs
-from lactic._utils import baseline_feedflow, set_yield, find_split, splits_df
-from lactic._chemicals import chems, chemical_groups, soluble_organics, combustibles
-from lactic._tea_lca import LacticTEA
+from biorefineries.lactic import _units as units
+from biorefineries.lactic import _facilities as facilities
+from biorefineries.lactic._process_settings import price, CFs
+from biorefineries.lactic._utils import baseline_feedflow, set_yield, find_split, splits_df
+from biorefineries.lactic._chemicals import chems, chemical_groups, soluble_organics, combustibles
+from biorefineries.lactic._tea_lca import LacticTEA
 
 flowsheet = bst.Flowsheet('lactic')
 bst.main_flowsheet.set_flowsheet(flowsheet)
@@ -336,7 +336,7 @@ D401_P = bst.units.Pump('D401_P', ins=D401-1)
 # LA + EtOH --> EtLA + H2O
 # R402.ins[0] is volatile-removed fermentation broth, ~50% w/w conc. LA feed,
 # R402.ins[1] is ethanol recycled from D402,
-# R402.ins[2] is latic acid recycled from D403,
+# R402.ins[2] is lactic acid recycled from D403,
 # R402.ins[3] is supplementary ethanol,
 # R402.ins[4] is ethanol recycled from D404
 R402 = units.Esterification('R402', ins=(D401_P-0, '', 'D403_l_recycled', 
@@ -650,9 +650,9 @@ ADP = facilities.ADP('ADP', ins=plant_air_in, outs='plant_air_out',
 CIP = facilities.CIP('CIP', ins=CIP_chems_in, outs='CIP_chems_out')
 
 # Heat exchange network
-# HXN = bst.units.HeatExchangerNetwork('HXN')
-from lactic.hx_network import HX_Network
-HXN = HX_Network('HXN')
+HXN = bst.units.HeatExchangerNetwork('HXN')
+# from lactic.hx_network import HX_Network
+# HXN = HX_Network('HXN')
 
 HXN_group = UnitGroup('HXN_group', units=(HXN,))
 process_groups.append(HXN_group)
@@ -753,7 +753,7 @@ def simulate_get_MPSP():
 # %%
 
 # =============================================================================
-# Life cycle analysis (LCA), waste disposal emission not included
+# Life cycle assessment (LCA), waste disposal emission not included
 # =============================================================================
 
 # 100-year global warming potential (GWP) from material flows
@@ -802,6 +802,7 @@ def simulate_and_print():
     print(f'FEC is {get_FEC():.2f} MJ/kg lactic acid')
     print('--------------------\n')
 
+bst.speed_up()
 simulate_and_print()
 
 

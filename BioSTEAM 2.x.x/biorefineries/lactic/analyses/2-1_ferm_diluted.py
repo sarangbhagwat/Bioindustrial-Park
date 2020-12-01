@@ -39,8 +39,8 @@ import numpy as np
 import pandas as pd
 import biosteam as bst
 from biosteam.utils import TicToc
-from lactic import system_diluted
-from lactic._utils import set_yield
+from biorefineries.lactic import system_diluted
+from biorefineries.lactic._utils import set_yield
 
 
 # %% 
@@ -180,9 +180,9 @@ for i in yield_range:
 
 regular_data = save_data_clear()
 
-with pd.ExcelWriter('regular1.xlsx') as writer:
-    regular_limit.to_excel(writer, sheet_name='Regular limit')
-    regular_data.to_excel(writer, sheet_name='Regular data')
+# with pd.ExcelWriter('regular-1.xlsx') as writer:
+#     regular_limit.to_excel(writer, sheet_name='Regular limit')
+#     regular_data.to_excel(writer, sheet_name='Regular data')
 
 
 # %%
