@@ -518,9 +518,9 @@ def set_R401_tau(tau):
     R401.tau = tau
 
 R402 = find.unit.R402
-D = baseline_uniform(0.95, 1.)
+D = baseline_uniform(0.95, 0.05)
 @param(name='Dehydration conversion', element=R402, kind='coupled', units='',
-       baseline=1, distribution=D)
+       baseline=0.95, distribution=D)
 def set_R402_conversion(X):
     R402.dehydration_reactions[0].X = X
     

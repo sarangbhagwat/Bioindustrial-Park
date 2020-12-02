@@ -18,10 +18,10 @@ import biosteam as bst
 from biosteam.utils import colors
 from matplotlib.ticker import AutoMinorLocator as AML
 
-# from HP.system import HP_sys, HP_tea, R302, spec
-# from HP.system import MEK as product
-from HP.system import HP_sys, HP_tea, R302, spec, get_GWP, get_non_bio_GWP, get_FEC, get_SPED
-from HP.system import AA as product
+# from HP.system_pretreatment_prioritization import HP_sys, HP_tea, R302, spec
+# from HP.system_pretreatment_prioritization import MEK as product
+from HP.system_pretreatment_prioritization import HP_sys, HP_tea, R302, spec, get_GWP, get_non_bio_GWP, get_FEC, get_SPED
+from HP.system_pretreatment_prioritization import AA as product
 
 from matplotlib import pyplot as plt
 from  matplotlib.colors import LinearSegmentedColormap
@@ -292,23 +292,24 @@ get_HP_inhibitors_conc = lambda: 1000*sum(R302.outs[0].imass['AceticAcid', 'Furf
 HP_metrics = [solve_AA_price, get_GWP, get_FEC]
 
 # %% Generate 3-specification meshgrid and set specification loading functions
-steps = 20
+steps = 10
 
 # Yield, titer, productivity (rate)
-spec_1 = np.linspace(0.2,0.99, steps) # yield
-spec_2 = np.linspace(20, 200, steps) # titer
+spec_1 = np.linspace(0.2,0.9, steps) # yield
+spec_2 = np.linspace(0.2,0.9, steps) # titer
 # spec_1 = np.linspace(0.2, 0.99, steps) # yield
 # spec_2 = np.linspace(45, 225, steps) # titer
 spec_3 = np.array([1.]) # productivity
-spec.load_spec_1 = spec.load_feedstock_sugar_content
-spec.load_spec_2 = spec.load_feedstock_price
+spec.load_spec_1 = spec.load_pretreatment_conversion_to_xylose
+spec.load_spec_2 = spec.load_pretreatment_conversion_to_acetic_acid
 spec.load_spec_3 = spec.load_productivity
-xlabel = "Sugar content (w/w)"
-ylabel = "Feedstock price " + "[" + "$\mathrm{\$} \cdot \mathrm{ton}^{-1}$" + "]"
+xlabel = "Xylan -> Xylose(%)"
+ylabel = "Acetate -> Acetic acid (%)"
 # xticks = [0.33, 0.66, 0.99]
-xticks = [0.2, 0.4, 0.6, 0.8, 1.0]
+xticks = [0., 0.2, 0.4, 0.6, 0.8, 1.0]
 # yticks = [75, 150, 225]
-yticks = [20, 40, 60, 80, 100, 120, 140, 160, 180, 200]
+yticks = [0., 0.2, 0.4, 0.6, 0.8, 1.0]
+# yticks = [0., 0.2, 0.4, 0.5]
 # xticks = [0.2, 0.6, 0.99]
 # yticks = [45, 135, 225]
 spec_3_units = "$\mathrm{g} \cdot \mathrm{L}^{-1} \cdot \mathrm{hr}^{-1}$"

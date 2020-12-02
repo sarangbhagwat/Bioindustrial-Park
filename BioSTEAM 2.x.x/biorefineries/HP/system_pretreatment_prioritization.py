@@ -243,11 +243,14 @@ F301.V = 0.797 #for sugars concentration of 591.25 g/L (599.73 g/L after cooling
 sugars_IDs = ('Glucose', 'Xylose')
 inhibitors_IDs = ('AceticAcid', 'HMF', 'Furfural')
 sugars_concentration = lambda x: sum(x.imass[sugars_IDs])/x.F_vol
-sugars_concentration = lambda x: sum(x.imass[sugars_IDs])/x.F_vol
+inhibitors_concentration = lambda x: sum(x.imass[inhibitors_IDs])/x.F_vol
 
 fixed_sugars_concentration = 591.25
 fixed_inhibitors_concentration = 0.9
     
+M304_water_multiplier = 1.7
+
+
 def F301_spec_sugars(V):
     F301.V = V
     F301._run()
@@ -256,9 +259,9 @@ def F301_spec_sugars(V):
 def F301_spec_inhibitors(V):
     F301.V = V
     F301._run()
-    return sugars_concentration(F301.outs[0]) - fixed_sugars_concentration
+    return inhibitors_concentration(F301.outs[0]) - M304_water_multiplier*fixed_inhibitors_concentration
 
-F301.specification = BoundedNumericalSpecification(F301_spec_sugars, 0.2, 0.9999)
+F301.specification = BoundedNumericalSpecification(F301_spec_inhibitors, 0.2, 0.9999)
 
 F301_P = units.HPPump('F301_P', ins=F301-1)
 # F301_H = bst.units.HXutility('F301_H', ins=F301-0, V = 0.)
@@ -270,7 +273,7 @@ def adjust_M304_water():
     
 M304 = bst.units.Mixer('M304', ins=(F301-0, dilution_water))
 # M304 = bst.units.Mixer('M304', ins=(S301-1, dilution_water, ''))
-M304.water_multiplier = 1.
+M304.water_multiplier = M304_water_multiplier
 M304.specification = adjust_M304_water
 M304_H = bst.units.HXutility('M304_H', ins=M304-0, T=30+273.15)
 M304_H_P = units.HPPump('M304_H_P', ins=M304_H-0)
@@ -356,6 +359,7 @@ S402 = units.GypsumFilter('S402', ins=R401_P-0,
                           outs=(gypsum, ''))
 def S402_spec():
     if S402.ins[0].imol['CaSO4']>0:
+        S402.ins[0].imol['H2O']*=2
         S402._run()
     else:
         S402.outs[0].mol[:] = 0
@@ -902,7 +906,7 @@ System.molar_tolerance = 0.1
 #         HP.price = HP_tea.solve_price(HP, HP_no_BT_tea)
 #     return HP.price
 
-num_sims = 1
+num_sims = 5
 num_solve_tea = 3
 def get_AA_MPSP():
     for i in range(num_sims):

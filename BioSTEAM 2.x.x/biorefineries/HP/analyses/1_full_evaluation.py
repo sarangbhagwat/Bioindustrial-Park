@@ -136,9 +136,13 @@ MPSPs = [[], [], []]
 GWPs = [[], [], []]
 FECs = [[], [], []]
 
+# import pdb
 bst.speed_up()
 for p in parameters:
-    [p_min], [p_max] = p.distribution.range().tolist()
+    # pdb.set_trace()
+    # [p_min], [p_max] = p.distribution.range().tolist()
+    p_dist = p.distribution
+    [p_min], [p_max] = p_dist.lower.tolist(), p_dist.upper.tolist()
     p_baseline = p.baseline
     p_value = (p_min, p_max, p_baseline)
     p.system = HP_sys
@@ -191,17 +195,18 @@ print(f'\nSimulation time for {run_number} runs is: {time:.1f} min')
 
 # %%
 
-'''Get a quick plot'''
-IRR_plot_indices = [metric.index for metric in model.metrics
-                    if 'IRR' in metric.index[0] and 'MPSP' in metric.index[1]]
-IRR_plot_data = IRR_results[IRR_plot_indices].copy()
-IRR_plot_data.columns = models.IRRs.copy()
-IRR_plot_y = IRR_plot_data.sort_index(axis=1)
-IRR_plot_y = IRR_plot_y.dropna()
-IRR_plot_x = models.IRRs.copy()
-IRR_plot_x.sort()
-plot_montecarlo_across_coordinate(IRR_plot_x, IRR_plot_y)
+# '''Get a quick plot'''
+# IRR_plot_indices = [metric.index for metric in model.metrics
+#                     if 'IRR' in metric.index[0] and 'MPSP' in metric.index[1]]
+# IRR_plot_data = IRR_results[IRR_plot_indices].copy()
+# IRR_plot_data.columns = models.IRRs.copy()
+# IRR_plot_y = IRR_plot_data.sort_index(axis=1)
+# IRR_plot_y = IRR_plot_y.dropna()
+# IRR_plot_x = models.IRRs.copy()
+# IRR_plot_x.sort()
+# plot_montecarlo_across_coordinate(IRR_plot_x, IRR_plot_y)
 
+#%%
 '''Output to Excel'''
 with pd.ExcelWriter('1_full_evaluation.xlsx') as writer:
     parameter_values.to_excel(writer, sheet_name='Parameters')

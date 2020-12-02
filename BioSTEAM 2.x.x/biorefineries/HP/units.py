@@ -1479,11 +1479,8 @@ class DehydrationReactor(Reactor):
             'TiO2 catalyst': 1,
             'Heat exchangers': 3.17}
     mcat_frac = (12/1.5) * (1e3)# kg per m3/h
-    dehydration_reactions = ParallelRxn([
-            #   Reaction definition                                       Reactant   Conversion
-            Rxn('HP -> AA + H2O',         'HP',   0.999) # 99.9% conversion for pure HP stream, assumed theoretical maximum for dilute stream
-                ])                                      # Dishisha et al. 2015
-    HP_to_AA_rxn = dehydration_reactions[0]
+                                 # Dishisha et al. 2015
+    
     
     def __init__(self, ID='', ins=None, outs=(), thermo=None, *, T=230+273.15,
                   P=101325, V_wf=0.8, length_to_diameter=2, tau = 1,
@@ -1503,8 +1500,12 @@ class DehydrationReactor(Reactor):
         self.vessel_type = vessel_type
         self.heat_exchanger = HXutility(None, None, None, T=T)
         self.tau = tau
-        self.X = self.dehydration_reactions[0].X = X
-        
+        self.X = X
+        self.dehydration_reactions = dehydration_reactions = ParallelRxn([
+        #   Reaction definition                                       Reactant   Conversion
+        Rxn('HP -> AA + H2O',         'HP',   X) # 99.9% conversion for pure HP stream, assumed theoretical maximum for dilute stream
+            ])     
+        HP_to_AA_rxn = dehydration_reactions[0]
     def _run(self):
         feed = self.ins[0]
         effluent = self.outs[0]

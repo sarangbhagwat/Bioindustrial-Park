@@ -49,12 +49,13 @@ class ProcessSpecification(bst.process_tools.ReactorSpecification):
                  'dehydration_reactor', 
                  'byproduct_streams',
                  'feedstock_mass',
-                 'glucan_to_xylan')
+                 'glucan_to_xylan',
+                 'pretreatment_reactor',)
     
     def __init__(self, evaporator, mixer, reactor, reaction_name, substrates, products,
                  spec_1, spec_2, spec_3, path, xylose_utilization_fraction,
                  feedstock, dehydration_reactor, byproduct_streams, evaporator_pump=None,
-                 feedstock_mass=104192.83224417375, glucan_to_xylan=0.5,
+                 feedstock_mass=104192.83224417375, glucan_to_xylan=0.5, pretreatment_reactor = None,
                   load_spec_1=None, load_spec_2=None, load_spec_3=None):
         self.evaporator = evaporator
         self.evaporator_pump = evaporator_pump
@@ -72,6 +73,7 @@ class ProcessSpecification(bst.process_tools.ReactorSpecification):
         self.byproduct_streams = byproduct_streams
         self.feedstock_mass = feedstock_mass
         self.glucan_to_xylan = glucan_to_xylan
+        self.pretreatment_reactor = pretreatment_reactor
        
         self.load_spec_1 = load_spec_1
         self.load_spec_2 = load_spec_2
@@ -369,4 +371,10 @@ class ProcessSpecification(bst.process_tools.ReactorSpecification):
         feedstock.imass[sugars_IDs] = mass_sugars
     # def load_capacity(self, capacity):
         
-    
+    def load_pretreatment_conversion_to_xylose(self, conversion):
+        self.spec_2 = conversion
+        self.pretreatment_reactor.pretreatment_rxns[4].X = conversion
+        
+    def load_pretreatment_conversion_to_acetic_acid(self, conversion):
+        self.spec_1 = conversion
+        self.pretreatment_reactor.pretreatment_rxns[7].X = conversion
